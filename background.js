@@ -280,5 +280,4 @@ chrome.action.onClicked.addListener(async tab => {
 chrome.tabs.onRemoved.addListener(async tabId => {
   await ensureStateInitialized();
   removeTabState(tabId);
-  chrome.action.setBadgeText({ tabId, text: '' });
 });

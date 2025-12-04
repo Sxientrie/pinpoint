@@ -1,8 +1,37 @@
 // pinpoint - ui components
-// tooltip and detail panel creation
+// tooltip and detail panel creation (csp-safe, no innerhtml)
 
-const COPY_ICON = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-const CHECK_ICON = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+/**
+ * creates svg element from path data
+ * @param {string} type - 'copy' or 'check'
+ * @returns {SVGElement}
+ */
+function createIcon(type) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  
+  if (type === 'copy') {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', '9');
+    rect.setAttribute('y', '9');
+    rect.setAttribute('width', '13');
+    rect.setAttribute('height', '13');
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('ry', '2');
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1');
+    
+    svg.appendChild(rect);
+    svg.appendChild(path);
+  } else if (type === 'check') {
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', '20 6 9 17 4 12');
+    svg.appendChild(polyline);
+  }
+  
+  return svg;
+}
 
 /**
  * creates hover tooltip in shadow dom
@@ -17,53 +46,77 @@ function createTooltip() {
 }
 
 /**
- * creates detail panel with copy buttons
+ * creates detail panel with copy buttons (csp-safe)
  * @returns {HTMLElement}
  */
 function createDetailPanel() {
   if (!shadowRoot) createShadowRoot();
+  
   const panel = document.createElement('div');
   panel.id = 'pp-panel';
-  panel.innerHTML = getDetailPanelHTML();
+  
+  // header
+  const header = document.createElement('div');
+  header.className = 'pp-panel-header';
+  
+  const title = document.createElement('h3');
+  title.textContent = 'pinpoint';
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'pp-close';
+  closeBtn.textContent = '×';
+  
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  
+  // body
+  const body = document.createElement('div');
+  body.className = 'pp-panel-body';
+  
+  body.appendChild(createField('selector', 'pp-selector'));
+  body.appendChild(createField('dimensions', 'pp-dimensions'));
+  body.appendChild(createField('framework attrs', 'pp-angular'));
+  body.appendChild(createField('dom path', 'pp-path'));
+  
+  panel.appendChild(header);
+  panel.appendChild(body);
+  
   shadowRoot.appendChild(panel);
   attachDetailPanelEventListeners(panel);
   return panel;
 }
 
 /**
- * @returns {string} panel html structure
- */
-function getDetailPanelHTML() {
-  return `
-    <div class="pp-panel-header">
-      <h3>pinpoint</h3>
-      <button id="pp-close">×</button>
-    </div>
-    <div class="pp-panel-body">
-      ${createField('selector', 'pp-selector')}
-      ${createField('dimensions', 'pp-dimensions')}
-      ${createField('framework attrs', 'pp-angular')}
-      ${createField('dom path', 'pp-path')}
-    </div>
-  `;
-}
-
-/**
  * creates single field with copy button
- * @param {string} label
+ * @param {string} labelText
  * @param {string} id
- * @returns {string}
+ * @returns {HTMLElement}
  */
-function createField(label, id) {
-  return `
-    <div class="pp-section">
-      <label>${label}</label>
-      <div class="pp-field-wrapper">
-        <code id="${id}"></code>
-        <button class="pp-copy-btn" data-copy-target="${id}">${COPY_ICON}</button>
-      </div>
-    </div>
-  `;
+function createField(labelText, id) {
+  const section = document.createElement('div');
+  section.className = 'pp-section';
+  
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  
+  const wrapper = document.createElement('div');
+  wrapper.className = 'pp-field-wrapper';
+  
+  const code = document.createElement('code');
+  code.id = id;
+  
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'pp-copy-btn';
+  copyBtn.setAttribute('data-copy-target', id);
+  copyBtn.appendChild(createIcon('copy'));
+  
+  wrapper.appendChild(code);
+  wrapper.appendChild(copyBtn);
+  
+  section.appendChild(label);
+  section.appendChild(wrapper);
+  
+  return section;
 }
 
 /**
@@ -98,16 +151,16 @@ async function handleCopyClick(btn, panel) {
 }
 
 /**
- * shows checkmark feedback on copy
+ * shows checkmark feedback on copy (csp-safe)
  * @param {HTMLElement} btn
  */
 function showCopySuccess(btn) {
   btn.classList.add('copied');
-  btn.innerHTML = CHECK_ICON;
+  btn.replaceChildren(createIcon('check'));
   
   setTimeout(() => {
     btn.classList.remove('copied');
-    btn.innerHTML = COPY_ICON;
+    btn.replaceChildren(createIcon('copy'));
   }, COPY_SUCCESS_DURATION_MS);
 }
 
