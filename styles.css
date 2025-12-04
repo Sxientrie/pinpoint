@@ -1,0 +1,8 @@
+/* pinpoint - highlight styles */
+/* injected into page for element highlighting */
+
+.pp-highlight {
+  outline: 1px dotted #ff0000 !important;
+  outline-offset: 1px !important;
+  background-color: rgba(186, 0, 0, 0.129) !important;
+}

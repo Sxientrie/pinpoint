@@ -1,0 +1,25 @@
+{
+  "name": "pinpoint",
+  "version": "1.0.0",
+  "description": "universal dom inspection tool for capturing stable css selectors on any web page",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "dom-inspection",
+    "css-selectors",
+    "web-development",
+    "developer-tools"
+  ],
+  "author": "MODiE",
+  "license": "MIT"
+}

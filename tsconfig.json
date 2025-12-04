@@ -1,0 +1,68 @@
+{
+  "compilerOptions": {
+    // language & environment
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "WebWorker"],
+    "module": "ES2020",
+    "moduleResolution": "node",
+    
+    // strict type checking
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    
+    // additional checks
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    
+    // emit
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "removeComments": false,
+    "newLine": "lf",
+    
+    // interop constraints
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    
+    // skip lib check for faster compilation
+    "skipLibCheck": true,
+    
+    // chrome extension specific
+    "types": ["chrome"],
+    "allowJs": true,
+    "checkJs": false
+  },
+  
+  "include": [
+    "*.ts",
+    "*.js",
+    "types.ts"
+  ],
+  
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".gemini"
+  ],
+  
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  }
+}
