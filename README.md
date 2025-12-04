@@ -8,13 +8,15 @@
 
 pinpoint is a chrome extension (manifest v3) for capturing stable css selectors from any web page. primary use case: qa automation, agent navigation, and web scraping. differentiator: generates selectors that traverse shadow dom boundaries, outputting playwright (`>>`) and puppeteer (`pierce/`) formats.
 
-key capabilities:
+capabilities:
 
 - alt+hover highlights elements with bounding box overlay
 - alt+click captures element data (selector, dimensions, path)
 - arrow key navigation for fine-tuning selection (parent/child/sibling)
 - shadow dom piercing with depth awareness
 - draggable detail panel with one-click copy
+- smart tooltip positioning (auto-flips at viewport edges)
+- interactive dom path breadcrumbs (click to navigate ancestors)
 
 ---
 
@@ -101,17 +103,19 @@ flowchart TB
 
 ## key concepts
 
-| term                  | definition                                                                                 |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| **shadow pierce**     | traversing shadow dom boundaries to generate selectors that work with playwright/puppeteer |
-| **selector priority** | id → data-_ → aria-_ → class → text → anchored → structural fallback                       |
-| **playwright format** | `host >> .internal-button` (uses `>>` for shadow boundary)                                 |
-| **puppeteer format**  | `pierce/host .internal-button` (uses `pierce/` prefix)                                     |
-| **structural path**   | last-resort selector using tag names and nth-of-type                                       |
-| **anchored selector** | finds nearest parent with id, uses as anchor point                                         |
-| **raf throttling**    | requestAnimationFrame debouncing to prevent layout thrashing                               |
-| **orphan cleanup**    | handles stale content scripts after extension reload                                       |
-| **pinpoint-root**     | custom element hosting shadow dom for ui isolation                                         |
+| term                   | definition                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| **shadow pierce**      | traversing shadow dom boundaries to generate selectors that work with playwright/puppeteer |
+| **selector priority**  | id → data-_ → aria-_ → class → text → anchored → structural fallback                       |
+| **playwright format**  | `host >> .internal-button` (uses `>>` for shadow boundary)                                 |
+| **puppeteer format**   | `pierce/host .internal-button` (uses `pierce/` prefix)                                     |
+| **structural path**    | last-resort selector using tag names and nth-of-type                                       |
+| **anchored selector**  | finds nearest parent with id, uses as anchor point                                         |
+| **raf throttling**     | requestAnimationFrame debouncing to prevent layout thrashing                               |
+| **orphan cleanup**     | handles stale content scripts after extension reload                                       |
+| **pinpoint-root**      | custom element hosting shadow dom for ui isolation                                         |
+| **path crumbs**        | interactive breadcrumb buttons for navigating dom ancestry without losing context          |
+| **edge-aware tooltip** | tooltip auto-flips position when approaching viewport boundaries                           |
 
 ---
 
