@@ -8,6 +8,8 @@ if (window.__PINPOINT_LOADED__) {
 
   (function() {
     'use strict';
+    
+    const P = window.Pinpoint;
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       switch (message.action) {
@@ -15,11 +17,11 @@ if (window.__PINPOINT_LOADED__) {
           sendResponse({ status: 'alive' });
           break;
         case 'ACTIVATE':
-          init();
+          P.Lifecycle.init();
           sendResponse({ success: true });
           break;
         case 'DEACTIVATE':
-          destroy();
+          P.Lifecycle.destroy();
           sendResponse({ success: true });
           break;
       }

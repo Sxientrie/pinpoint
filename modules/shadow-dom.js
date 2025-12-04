@@ -1,33 +1,39 @@
 // pinpoint - shadow dom
 // shadow root creation, encapsulated styles
 
-/**
- * creates shadow root for style isolation
- * @returns {ShadowRoot}
- */
-function createShadowRoot() {
-  shadowHost = document.createElement('pinpoint-root');
-  shadowHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;z-index:2147483647;pointer-events:none;';
+(function(P) {
+  'use strict';
   
-  shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+  const S = P.State;
+  const SD = P.ShadowDOM;
   
-  const style = document.createElement('style');
-  style.textContent = getShadowStyles();
-  shadowRoot.appendChild(style);
+  /**
+   * creates shadow root for style isolation
+   * @returns {ShadowRoot}
+   */
+  SD.createShadowRoot = function() {
+    S.shadowHost = document.createElement('pinpoint-root');
+    S.shadowHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;z-index:2147483647;pointer-events:none;';
+    
+    S.shadowRoot = S.shadowHost.attachShadow({ mode: 'open' });
+    
+    const style = document.createElement('style');
+    style.textContent = SD.getShadowStyles();
+    S.shadowRoot.appendChild(style);
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'pp-overlay';
+    S.shadowRoot.appendChild(overlay);
+    
+    document.body.appendChild(S.shadowHost);
+    return S.shadowRoot;
+  };
   
-  const overlay = document.createElement('div');
-  overlay.id = 'pp-overlay';
-  shadowRoot.appendChild(overlay);
-  
-  document.body.appendChild(shadowHost);
-  return shadowRoot;
-}
-
-/**
- * @returns {string} encapsulated css
- */
-function getShadowStyles() {
-  return `
+  /**
+   * @returns {string} encapsulated css
+   */
+  SD.getShadowStyles = function() {
+    return `
 #pp-overlay {
   position: fixed;
   top: 0;
@@ -279,5 +285,6 @@ function getShadowStyles() {
   font-size: 10px;
 }
   `;
-}
+  };
 
+})(window.Pinpoint);

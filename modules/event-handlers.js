@@ -1,240 +1,197 @@
 // pinpoint - event handlers
 // mouse/click/keyboard with raf throttling
 
-/**
- * handles mousemove with raf throttling
- * @param {MouseEvent} event
- */
-function handleMouseMove(event) {
-  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
-  if (!isActive || isDetailPanelOpen) return;
+(function(P) {
+  'use strict';
+  
+  const C = P.Constants;
+  const S = P.State;
+  const SEL = P.Selector;
+  const UI = P.UI;
+  const E = P.Events;
+  
+  E.handleMouseMove = function(event) {
+    if (!chrome.runtime?.id) { P.Lifecycle.cleanupOrphaned(); return; }
+    if (!S.isActive || S.isDetailPanelOpen) return;
 
-  lastMouseEvent = {
-    target: event.target,
-    clientX: event.clientX,
-    clientY: event.clientY,
-    altKey: event.altKey
+    S.lastMouseEvent = {
+      target: event.target,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      altKey: event.altKey
+    };
+
+    if (S.rafPending) return;
+    S.rafPending = true;
+    requestAnimationFrame(processMouseMove);
+  };
+  
+  function processMouseMove() {
+    S.rafPending = false;
+    if (!chrome.runtime?.id) { P.Lifecycle.cleanupOrphaned(); return; }
+    if (!S.lastMouseEvent) return;
+    
+    const { target, clientX, clientY, altKey } = S.lastMouseEvent;
+    
+    if (isPinpointElement(target)) return;
+
+    if (!altKey) {
+      hideTooltipAndClearHighlight();
+      return;
+    }
+
+    E.updateHighlight(target);
+    updateTooltip(target, clientX, clientY);
+  }
+  
+  function isPinpointElement(el) {
+    return (el.id?.startsWith('pp-')) || el.closest?.('#pp-panel');
+  }
+  
+  function hideTooltipAndClearHighlight() {
+    S.tooltip.style.display = 'none';
+    const overlay = S.shadowRoot?.getElementById('pp-overlay');
+    if (overlay) overlay.style.opacity = '0';
+    S.hoveredElement = null;
+    S.tooltipWidth = 0;
+    S.tooltipHeight = 0;
+  }
+  
+  E.updateHighlight = function(target) {
+    S.hoveredElement = target;
+    const overlay = S.shadowRoot?.getElementById('pp-overlay');
+    if (!overlay) return;
+    
+    const rect = target.getBoundingClientRect();
+    overlay.style.top = rect.top + 'px';
+    overlay.style.left = rect.left + 'px';
+    overlay.style.width = rect.width + 'px';
+    overlay.style.height = rect.height + 'px';
+    overlay.style.opacity = '1';
+  };
+  
+  function updateTooltip(target, clientX, clientY) {
+    const tag = target.tagName.toLowerCase();
+    const classes = typeof target.className === 'string'
+      ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
+      : '';
+    
+    S.tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • Click to capture`;
+    S.tooltip.style.display = 'block';
+    
+    if (!S.tooltipWidth) {
+      S.viewportWidth = window.innerWidth;
+      S.viewportHeight = window.innerHeight;
+      S.tooltipWidth = S.tooltip.offsetWidth;
+      S.tooltipHeight = S.tooltip.offsetHeight;
+    }
+    
+    let x = clientX + C.TOOLTIP_OFFSET_X;
+    if (x + S.tooltipWidth > S.viewportWidth) {
+      x = clientX - C.TOOLTIP_OFFSET_X - S.tooltipWidth;
+    }
+    
+    let y = clientY + C.TOOLTIP_OFFSET_Y;
+    if (y + S.tooltipHeight > S.viewportHeight) {
+      y = clientY - C.TOOLTIP_OFFSET_Y - S.tooltipHeight;
+    }
+    
+    S.tooltip.style.left = x + 'px';
+    S.tooltip.style.top = y + 'px';
+  }
+  
+  function updateTooltipCentered(target) {
+    const tag = target.tagName.toLowerCase();
+    const classes = typeof target.className === 'string'
+      ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
+      : '';
+    
+    S.tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • ↑↓←→ navigate`;
+    S.tooltip.style.display = 'block';
+    
+    const rect = target.getBoundingClientRect();
+    S.tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+    S.tooltip.style.top = (rect.top - 30) + 'px';
+  }
+  
+  E.handleKeyDown = function(event) {
+    if (!chrome.runtime?.id) { P.Lifecycle.cleanupOrphaned(); return; }
+    if (!S.isActive || S.isDetailPanelOpen || !S.hoveredElement) return;
+    
+    const key = event.key;
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    let newTarget = null;
+    
+    switch (key) {
+      case 'ArrowUp':
+        newTarget = S.hoveredElement.parentElement;
+        break;
+      case 'ArrowDown':
+        newTarget = S.hoveredElement.firstElementChild;
+        break;
+      case 'ArrowLeft':
+        newTarget = S.hoveredElement.previousElementSibling;
+        break;
+      case 'ArrowRight':
+        newTarget = S.hoveredElement.nextElementSibling;
+        break;
+    }
+    
+    if (!newTarget) return;
+    if (newTarget === document.body || newTarget === document.documentElement) return;
+    if (isPinpointElement(newTarget)) return;
+    
+    E.updateHighlight(newTarget);
+    updateTooltipCentered(newTarget);
+  };
+  
+  E.handleClick = function(event) {
+    if (!chrome.runtime?.id) { P.Lifecycle.cleanupOrphaned(); return; }
+    if (!S.isActive || !event.altKey) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const target = event.target;
+    if (isPinpointElement(target)) return;
+
+    E.captureElementData(target);
+    E.showDetailPanel();
+  };
+  
+  E.captureElementData = function(target) {
+    S.capturedElement = target;
+    S.originalCapturedElement = target;
+    
+    const selectorData = SEL.getAllSelectorFormats(target);
+    const rect = target.getBoundingClientRect();
+    const dimensions = `${Math.round(rect.width)}px × ${Math.round(rect.height)}px`;
+    const angularAttrs = SEL.getAngularAttributes(target);
+    const pathData = SEL.getDomPath(target);
+    
+    S.activeCrumbIndex = pathData.length - 1;
+
+    let selectorDisplay = selectorData.playwright;
+    
+    if (selectorData.depth > 0) {
+      selectorDisplay += `\n\n/* Puppeteer */\n${selectorData.puppeteer}`;
+      selectorDisplay += `\n\n/* Shadow Depth: ${selectorData.depth} */`;
+    }
+
+    UI.renderSelector(selectorDisplay, S.detailPanel.querySelector('#pp-selector'));
+    S.detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
+    S.detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
+    UI.renderPathCrumbs(pathData, S.detailPanel.querySelector('#pp-path'), S.activeCrumbIndex);
+  };
+  
+  E.showDetailPanel = function() {
+    S.detailPanel.style.display = 'block';
+    S.isDetailPanelOpen = true;
+    S.tooltip.style.display = 'none';
   };
 
-  if (rafPending) return;
-  rafPending = true;
-  requestAnimationFrame(processMouseMove);
-}
-
-/**
- * processes mouse movement once per frame
- */
-function processMouseMove() {
-  rafPending = false;
-  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
-  if (!lastMouseEvent) return;
-  
-  const { target, clientX, clientY, altKey } = lastMouseEvent;
-  
-  if (isPinpointElement(target)) return;
-
-  if (!altKey) {
-    hideTooltipAndClearHighlight();
-    return;
-  }
-
-  updateHighlight(target);
-  updateTooltip(target, clientX, clientY);
-}
-
-/**
- * @param {HTMLElement} el
- * @returns {boolean} true if element is pinpoint ui
- */
-function isPinpointElement(el) {
-  return (el.id?.startsWith('pp-')) || el.closest?.('#pp-panel');
-}
-
-/**
- * hides tooltip and overlay, resets cached dimensions
- */
-function hideTooltipAndClearHighlight() {
-  tooltip.style.display = 'none';
-  const overlay = shadowRoot?.getElementById('pp-overlay');
-  if (overlay) overlay.style.opacity = '0';
-  hoveredElement = null;
-  tooltipWidth = 0;
-  tooltipHeight = 0;
-}
-
-
-/**
- * updates overlay to highlight element
- * @param {HTMLElement} target
- */
-function updateHighlight(target) {
-  hoveredElement = target;
-  const overlay = shadowRoot?.getElementById('pp-overlay');
-  if (!overlay) return;
-  
-  const rect = target.getBoundingClientRect();
-  overlay.style.top = rect.top + 'px';
-  overlay.style.left = rect.left + 'px';
-  overlay.style.width = rect.width + 'px';
-  overlay.style.height = rect.height + 'px';
-  overlay.style.opacity = '1';
-}
-
-/**
- * updates tooltip content and position, flips if clipping viewport
- * @param {HTMLElement} target
- * @param {number} clientX
- * @param {number} clientY
- */
-function updateTooltip(target, clientX, clientY) {
-  const tag = target.tagName.toLowerCase();
-  const classes = typeof target.className === 'string'
-    ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
-    : '';
-  
-  tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • Click to capture`;
-  tooltip.style.display = 'block';
-  
-  // cache dimensions once per hover (avoid layout reads in RAF)
-  if (!tooltipWidth) {
-    viewportWidth = window.innerWidth;
-    viewportHeight = window.innerHeight;
-    tooltipWidth = tooltip.offsetWidth;
-    tooltipHeight = tooltip.offsetHeight;
-  }
-  
-  // flip left if clipping right edge
-  let x = clientX + TOOLTIP_OFFSET_X;
-  if (x + tooltipWidth > viewportWidth) {
-    x = clientX - TOOLTIP_OFFSET_X - tooltipWidth;
-  }
-  
-  // flip up if clipping bottom edge
-  let y = clientY + TOOLTIP_OFFSET_Y;
-  if (y + tooltipHeight > viewportHeight) {
-    y = clientY - TOOLTIP_OFFSET_Y - tooltipHeight;
-  }
-  
-  tooltip.style.left = x + 'px';
-  tooltip.style.top = y + 'px';
-}
-
-
-/**
- * updates tooltip position centered above element
- * @param {HTMLElement} target
- */
-function updateTooltipCentered(target) {
-  const tag = target.tagName.toLowerCase();
-  const classes = typeof target.className === 'string'
-    ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
-    : '';
-  
-  tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • ↑↓←→ navigate`;
-  tooltip.style.display = 'block';
-  
-  const rect = target.getBoundingClientRect();
-  tooltip.style.left = (rect.left + rect.width / 2) + 'px';
-  tooltip.style.top = (rect.top - 30) + 'px';
-}
-
-// keyboard navigation
-
-/**
- * handles arrow key navigation when element is hovered
- * @param {KeyboardEvent} event
- */
-function handleKeyDown(event) {
-  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
-  if (!isActive || isDetailPanelOpen || !hoveredElement) return;
-  
-  const key = event.key;
-  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
-  
-  event.preventDefault();
-  event.stopPropagation();
-  
-  let newTarget = null;
-  
-  switch (key) {
-    case 'ArrowUp':
-      newTarget = hoveredElement.parentElement;
-      break;
-    case 'ArrowDown':
-      newTarget = hoveredElement.firstElementChild;
-      break;
-    case 'ArrowLeft':
-      newTarget = hoveredElement.previousElementSibling;
-      break;
-    case 'ArrowRight':
-      newTarget = hoveredElement.nextElementSibling;
-      break;
-  }
-  
-  // validate new target
-  if (!newTarget) return;
-  if (newTarget === document.body || newTarget === document.documentElement) return;
-  if (isPinpointElement(newTarget)) return;
-  
-  updateHighlight(newTarget);
-  updateTooltipCentered(newTarget);
-}
-
-/**
- * handles alt+click for element capture
- * @param {MouseEvent} event
- */
-function handleClick(event) {
-  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
-  if (!isActive || !event.altKey) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  const target = event.target;
-  if (isPinpointElement(target)) return;
-
-  captureElementData(target);
-  showDetailPanel();
-}
-
-/**
- * captures element data and populates panel (initial capture)
- * @param {HTMLElement} target
- */
-function captureElementData(target) {
-  capturedElement = target;
-  originalCapturedElement = target;
-  
-  const selectorData = getAllSelectorFormats(target);
-  const rect = target.getBoundingClientRect();
-  const dimensions = `${Math.round(rect.width)}px × ${Math.round(rect.height)}px`;
-  const angularAttrs = getAngularAttributes(target);
-  const pathData = getDomPath(target);
-  
-  // set active to last crumb (the clicked element)
-  activeCrumbIndex = pathData.length - 1;
-
-  let selectorDisplay = selectorData.playwright;
-  
-  if (selectorData.depth > 0) {
-    selectorDisplay += `\n\n/* Puppeteer */\n${selectorData.puppeteer}`;
-    selectorDisplay += `\n\n/* Shadow Depth: ${selectorData.depth} */`;
-  }
-
-  renderSelector(selectorDisplay, detailPanel.querySelector('#pp-selector'));
-  detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
-  detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
-  renderPathCrumbs(pathData, detailPanel.querySelector('#pp-path'), activeCrumbIndex);
-}
-
-
-
-/**
- * shows detail panel, hides tooltip
- */
-function showDetailPanel() {
-  detailPanel.style.display = 'block';
-  isDetailPanelOpen = true;
-  tooltip.style.display = 'none';
-}
+})(window.Pinpoint);

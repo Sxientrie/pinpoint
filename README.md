@@ -187,5 +187,8 @@ none. vanilla javascript, no bundler, no external libraries.
 
 ---
 
-_build for developers_
-_generated 2025-12-05_
+_model-assited development_
+
+this project was developed with the assistance of an AI model. while the code is self-contained and does not require external dependencies, the development process was supported by an AI model to enhance productivity and accuracy.
+
+{{user}}->{{reviewer}}->{{prompt}}->{{model}}->{{code}}->{{user}}

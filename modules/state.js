@@ -1,29 +1,41 @@
 // pinpoint - state
 // shared mutable state for inspection engine
 
-let hoveredElement = null;
-let capturedElement = null;
-let originalCapturedElement = null;
-let activeCrumbIndex = -1;
-let tooltip = null;
+(function(P) {
+  'use strict';
+  
+  const S = P.State;
+  
+  // element references
+  S.hoveredElement = null;
+  S.capturedElement = null;
+  S.originalCapturedElement = null;
+  S.activeCrumbIndex = -1;
+  
+  // ui elements
+  S.tooltip = null;
+  S.detailPanel = null;
+  S.isDetailPanelOpen = false;
+  S.isActive = false;
+  S.shadowRoot = null;
+  S.shadowHost = null;
+  
+  // raf throttling
+  S.rafPending = false;
+  S.lastMouseEvent = null;
+  
+  // drag state
+  S.isDragging = false;
+  S.dragStartX = 0;
+  S.dragStartY = 0;
+  S.panelOffsetX = 0;
+  S.panelOffsetY = 0;
+  S.dragRafPending = false;
+  
+  // cached dimensions
+  S.viewportWidth = 0;
+  S.viewportHeight = 0;
+  S.tooltipWidth = 0;
+  S.tooltipHeight = 0;
 
-let detailPanel = null;
-let isDetailPanelOpen = false;
-let isActive = false;
-let shadowRoot = null;
-let shadowHost = null;
-
-let rafPending = false;
-let lastMouseEvent = null;
-
-let isDragging = false;
-let dragStartX = 0;
-let dragStartY = 0;
-let panelOffsetX = 0;
-let panelOffsetY = 0;
-let dragRafPending = false;
-
-let viewportWidth = 0;
-let viewportHeight = 0;
-let tooltipWidth = 0;
-let tooltipHeight = 0;
+})(window.Pinpoint);

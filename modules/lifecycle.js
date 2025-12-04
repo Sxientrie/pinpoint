@@ -1,79 +1,76 @@
 // pinpoint - lifecycle
 // init/destroy, orphaned context handling
 
-/**
- * @returns {boolean} true if extension context valid
- */
-function isContextValid() {
-  return !!(chrome.runtime?.id);
-}
+(function(P) {
+  'use strict';
+  
+  const S = P.State;
+  const UI = P.UI;
+  const E = P.Events;
+  const L = P.Lifecycle;
+  
+  L.isContextValid = function() {
+    return !!(chrome.runtime?.id);
+  };
+  
+  L.cleanupOrphaned = function() {
+    document.removeEventListener('mousemove', E.handleMouseMove, true);
+    document.removeEventListener('click', E.handleClick, true);
+    document.removeEventListener('keydown', E.handleKeyDown, true);
+    
+    if (S.shadowHost?.parentNode) {
+      S.shadowHost.parentNode.removeChild(S.shadowHost);
+    }
+    
+    S.shadowHost = null;
+    S.shadowRoot = null;
+    S.tooltip = null;
+    S.detailPanel = null;
+    S.hoveredElement = null;
+    S.isActive = false;
+  };
+  
+  L.init = function() {
+    if (!L.isContextValid()) {
+      L.cleanupOrphaned();
+      return;
+    }
+    
+    if (S.isActive) return;
+    
+    if (!S.tooltip) S.tooltip = UI.createTooltip();
+    if (!S.detailPanel) S.detailPanel = UI.createDetailPanel();
 
-/**
- * cleans up orphaned script after extension reload
- */
-function cleanupOrphaned() {
-  document.removeEventListener('mousemove', handleMouseMove, true);
-  document.removeEventListener('click', handleClick, true);
-  document.removeEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('mousemove', E.handleMouseMove, true);
+    document.addEventListener('click', E.handleClick, true);
+    document.addEventListener('keydown', E.handleKeyDown, true);
+    
+    S.isActive = true;
+  };
   
-  if (shadowHost?.parentNode) {
-    shadowHost.parentNode.removeChild(shadowHost);
-  }
-  
-  shadowHost = null;
-  shadowRoot = null;
-  tooltip = null;
-  detailPanel = null;
-  hoveredElement = null;
-  isActive = false;
-}
+  L.destroy = function() {
+    if (!L.isContextValid()) {
+      L.cleanupOrphaned();
+      return;
+    }
+    
+    if (!S.isActive) return;
+    
+    document.removeEventListener('mousemove', E.handleMouseMove, true);
+    document.removeEventListener('click', E.handleClick, true);
+    document.removeEventListener('keydown', E.handleKeyDown, true);
+    
+    if (S.tooltip) S.tooltip.style.display = 'none';
+    if (S.detailPanel) S.detailPanel.style.display = 'none';
+    
+    const overlay = S.shadowRoot?.getElementById('pp-overlay');
+    if (overlay) overlay.style.opacity = '0';
+    
+    S.hoveredElement = null;
+    S.isDetailPanelOpen = false;
+    S.isActive = false;
+    S.lastMouseEvent = null;
+    S.rafPending = false;
+  };
 
-/**
- * initializes inspection engine
- */
-function init() {
-  if (!isContextValid()) {
-    cleanupOrphaned();
-    return;
-  }
-  
-  if (isActive) return;
-  
-  if (!tooltip) tooltip = createTooltip();
-  if (!detailPanel) detailPanel = createDetailPanel();
-
-  document.addEventListener('mousemove', handleMouseMove, true);
-  document.addEventListener('click', handleClick, true);
-  document.addEventListener('keydown', handleKeyDown, true);
-  
-  isActive = true;
-}
-
-/**
- * deactivates inspection engine, cleans up
- */
-function destroy() {
-  if (!isContextValid()) {
-    cleanupOrphaned();
-    return;
-  }
-  
-  if (!isActive) return;
-  
-  document.removeEventListener('mousemove', handleMouseMove, true);
-  document.removeEventListener('click', handleClick, true);
-  document.removeEventListener('keydown', handleKeyDown, true);
-  
-  if (tooltip) tooltip.style.display = 'none';
-  if (detailPanel) detailPanel.style.display = 'none';
-  
-  const overlay = shadowRoot?.getElementById('pp-overlay');
-  if (overlay) overlay.style.opacity = '0';
-  
-  hoveredElement = null;
-  isDetailPanelOpen = false;
-  isActive = false;
-  lastMouseEvent = null;
-  rafPending = false;
-}
-
+})(window.Pinpoint);
