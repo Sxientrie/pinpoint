@@ -157,6 +157,7 @@
       const rect = target.getBoundingClientRect();
       const dimensions = `${Math.round(rect.width)}px × ${Math.round(rect.height)}px`;
       const angularAttrs = SEL.getAngularAttributes(target);
+      const reactName = SEL.getReactComponentName(target);
 
       let selectorDisplay = selectorData.playwright;
       if (selectorData.depth > 0) {
@@ -167,6 +168,7 @@
       UI.renderSelector(selectorDisplay, S.detailPanel.querySelector('#pp-selector'));
       S.detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
       S.detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
+      S.detailPanel.querySelector('#pp-component').textContent = reactName || 'none';
       
       UI.updateActiveCrumb(index);
       P.Events.updateHighlight(target);
@@ -205,6 +207,7 @@
     
     body.appendChild(createField('selector', 'pp-selector'));
     body.appendChild(createField('dimensions', 'pp-dimensions'));
+    body.appendChild(createField('component', 'pp-component'));
     body.appendChild(createField('framework attrs', 'pp-angular'));
     body.appendChild(createField('dom path', 'pp-path'));
     

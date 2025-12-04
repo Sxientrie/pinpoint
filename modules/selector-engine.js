@@ -91,6 +91,69 @@
     return path;
   };
   
+  /**
+   * extracts react/preact component name from element
+   * @param {HTMLElement} el
+   * @returns {string|null}
+   */
+  SEL.getReactComponentName = function(el) {
+    try {
+      // find react fiber key
+      const fiberKey = Object.keys(el).find(key => 
+        key.startsWith('__reactFiber') || 
+        key.startsWith('__reactInternalInstance') ||
+        key.startsWith('__reactProps')
+      );
+      
+      if (!fiberKey) return null;
+      
+      let fiber = el[fiberKey];
+      if (!fiber) return null;
+      
+      // traverse up fiber tree to find component
+      const visited = new Set();
+      let depth = 0;
+      const maxDepth = 20;
+      
+      while (fiber && depth < maxDepth) {
+        // prevent infinite loops
+        if (visited.has(fiber)) break;
+        visited.add(fiber);
+        
+        const type = fiber.type || fiber.elementType;
+        
+        if (type) {
+          // function component or class
+          if (typeof type === 'function') {
+            const name = type.displayName || type.name;
+            if (name && name !== 'Anonymous' && !name.startsWith('_')) {
+              return name;
+            }
+          }
+          // forwardRef, memo wrapped
+          if (typeof type === 'object') {
+            const inner = type.render || type.type;
+            if (inner) {
+              const name = inner.displayName || inner.name;
+              if (name && name !== 'Anonymous') {
+                return name;
+              }
+            }
+          }
+        }
+        
+        // go up the tree
+        fiber = fiber.return || fiber._debugOwner;
+        depth++;
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  
   // internal helpers
   
   function getLightDOMSelector(el) {

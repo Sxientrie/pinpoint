@@ -76,7 +76,12 @@
       ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
       : '';
     
-    S.tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • Click to capture`;
+    // include react component name if available
+    const reactName = SEL.getReactComponentName(target);
+    let label = classes ? `${tag}.${classes}` : tag;
+    if (reactName) label += ` (${reactName})`;
+    
+    S.tooltip.textContent = `${label} • Click to capture`;
     S.tooltip.style.display = 'block';
     
     if (!S.tooltipWidth) {
@@ -175,6 +180,7 @@
     const dimensions = `${Math.round(rect.width)}px × ${Math.round(rect.height)}px`;
     const angularAttrs = SEL.getAngularAttributes(target);
     const pathData = SEL.getDomPath(target);
+    const reactName = SEL.getReactComponentName(target);
     
     S.activeCrumbIndex = pathData.length - 1;
 
@@ -188,6 +194,7 @@
     UI.renderSelector(selectorDisplay, S.detailPanel.querySelector('#pp-selector'));
     S.detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
     S.detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
+    S.detailPanel.querySelector('#pp-component').textContent = reactName || 'none';
     UI.renderPathCrumbs(pathData, S.detailPanel.querySelector('#pp-path'), S.activeCrumbIndex);
     
     // clear any previous detached state

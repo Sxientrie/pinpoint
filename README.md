@@ -17,6 +17,9 @@ capabilities:
 - draggable detail panel with one-click copy
 - smart tooltip positioning (auto-flips at viewport edges)
 - interactive dom path breadcrumbs (click to navigate ancestors)
+- element detachment detection (warns if captured element is removed)
+- react/preact component name detection via fiber internals
+- namespace-encapsulated modules (`window.Pinpoint.*`)
 
 ---
 
@@ -75,10 +78,10 @@ flowchart TB
 1. user clicks extension icon
 2. background.js receives chrome.action.onClicked
 3. checks if tab is restricted (chrome://, etc.)
-4. pings content script (PING) to check if already injected
+4. checks keepalive port map for script liveness
 5. if not alive: injects all content scripts in order
 6. sends ACTIVATE message
-7. content.js routes to init()
+7. content.js establishes keepalive port, routes to Pinpoint.Lifecycle.init()
 8. lifecycle.js creates shadow root, mounts overlay/tooltip
 9. event listeners attached (mousemove, click, keydown)
 10. badge set to "ON"
@@ -116,6 +119,10 @@ flowchart TB
 | **pinpoint-root**      | custom element hosting shadow dom for ui isolation                                         |
 | **path crumbs**        | interactive breadcrumb buttons for navigating dom ancestry without losing context          |
 | **edge-aware tooltip** | tooltip auto-flips position when approaching viewport boundaries                           |
+| **keepalive port**     | long-lived chrome.runtime.connect for instant disconnect detection                         |
+| **element observer**   | MutationObserver tracking captured element removal from DOM                                |
+| **namespace pattern**  | all modules export to `window.Pinpoint.*` to prevent global pollution                      |
+| **react fiber**        | traverses `__reactFiber*` internals to extract component displayName or function name      |
 
 ---
 
