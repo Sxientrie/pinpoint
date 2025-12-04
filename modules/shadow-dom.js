@@ -85,6 +85,7 @@ function getShadowStyles() {
   color: #e4e4e7;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   pointer-events: auto;
+  will-change: transform;
 }
 
 .pp-panel-header {
@@ -94,6 +95,8 @@ function getShadowStyles() {
   padding: 14px 18px;
   border-bottom: 1px solid rgba(63, 63, 70, 0.3);
   background: rgba(24, 24, 27, 0.5);
+  cursor: move;
+  user-select: none;
 }
 
 .pp-panel-header h3 {
@@ -165,6 +168,10 @@ function getShadowStyles() {
   display: block;
   white-space: pre-wrap;
 }
+
+.tok-id { color: var(--tok-id, #facc15); }
+.tok-class { color: var(--tok-class, #60a5fa); }
+.tok-attr { color: var(--tok-attr, #4ade80); }
 
 .pp-copy-btn {
   position: absolute;

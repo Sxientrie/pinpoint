@@ -191,7 +191,7 @@ function captureElementData(target) {
     selectorDisplay += `\n\n/* Shadow Depth: ${selectorData.depth} */`;
   }
 
-  detailPanel.querySelector('#pp-selector').textContent = selectorDisplay;
+  detailPanel.querySelector('#pp-selector').innerHTML = highlightSelector(selectorDisplay);
   detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
   detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
   detailPanel.querySelector('#pp-path').textContent = domPath;

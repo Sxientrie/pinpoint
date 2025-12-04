@@ -1,5 +1,17 @@
 // pinpoint - ui components
-// tooltip and detail panel creation (csp-safe, no innerhtml)
+// tooltip and detail panel creation, selector highlighting
+
+/**
+ * tokenizes selector string for syntax highlighting
+ * @param {string} sel
+ * @returns {string} html with token spans
+ */
+function highlightSelector(sel) {
+  return sel
+    .replace(/(\[.*?\])/g, '<span class="tok-attr">$1</span>')
+    .replace(/(#[\w-]+)/g, '<span class="tok-id">$1</span>')
+    .replace(/(\.[\w-]+)/g, '<span class="tok-class">$1</span>');
+}
 
 /**
  * creates svg element from path data
@@ -124,6 +136,8 @@ function createField(labelText, id) {
  * @param {HTMLElement} panel
  */
 function attachDetailPanelEventListeners(panel) {
+  const header = panel.querySelector('.pp-panel-header');
+  
   panel.querySelector('#pp-close').addEventListener('click', closePanel);
   
   document.addEventListener('keydown', e => {
@@ -133,6 +147,8 @@ function attachDetailPanelEventListeners(panel) {
   panel.querySelectorAll('.pp-copy-btn').forEach(btn => {
     btn.addEventListener('click', () => handleCopyClick(btn, panel));
   });
+  
+  header.addEventListener('mousedown', e => handleDragStart(e, panel));
 }
 
 /**
@@ -174,4 +190,53 @@ function closePanel() {
   
   const overlay = shadowRoot?.getElementById('pp-overlay');
   if (overlay) overlay.style.opacity = '0';
+}
+
+/**
+ * initiates drag on panel header
+ * @param {MouseEvent} e
+ * @param {HTMLElement} panel
+ */
+function handleDragStart(e, panel) {
+  if (e.target.id === 'pp-close') return;
+  
+  isDragging = true;
+  dragStartX = e.clientX - panelOffsetX;
+  dragStartY = e.clientY - panelOffsetY;
+  
+  document.addEventListener('mousemove', handleDragMove);
+  document.addEventListener('mouseup', handleDragEnd);
+  
+  e.preventDefault();
+}
+
+/**
+ * processes drag movement with raf throttling
+ * @param {MouseEvent} e
+ */
+function handleDragMove(e) {
+  if (!isDragging) return;
+  
+  const deltaX = e.clientX - dragStartX;
+  const deltaY = e.clientY - dragStartY;
+  
+  if (dragRafPending) return;
+  dragRafPending = true;
+  
+  requestAnimationFrame(() => {
+    dragRafPending = false;
+    panelOffsetX = deltaX;
+    panelOffsetY = deltaY;
+    
+    detailPanel.style.transform = `translate(calc(-50% + ${panelOffsetX}px), calc(-50% + ${panelOffsetY}px))`;
+  });
+}
+
+/**
+ * completes drag, removes listeners
+ */
+function handleDragEnd() {
+  isDragging = false;
+  document.removeEventListener('mousemove', handleDragMove);
+  document.removeEventListener('mouseup', handleDragEnd);
 }
