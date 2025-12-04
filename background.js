@@ -165,14 +165,14 @@ async function sendMessageSafe(tabId, message) {
 // injection
 
 /**
- * checks if scripts already injected via global flag
+ * checks if scripts already injected in top frame via global flag
  * @param {number} tabId
  * @returns {Promise<boolean>}
  */
 async function isAlreadyInjected(tabId) {
   try {
     const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
+      target: { tabId, allFrames: false },
       func: () => !!window.__PINPOINT_LOADED__
     });
     return result?.result === true;
@@ -182,7 +182,7 @@ async function isAlreadyInjected(tabId) {
 }
 
 /**
- * injects content scripts and css into tab (idempotent)
+ * injects content scripts and css into tab and all iframes (idempotent)
  * @param {number} tabId
  * @returns {Promise<void>}
  */
@@ -193,20 +193,29 @@ async function injectScript(tabId) {
     return;
   }
   
-  await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPTS });
-  await chrome.scripting.insertCSS({ target: { tabId }, files: ['styles.css'] });
+  await chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    files: CONTENT_SCRIPTS
+  });
+  await chrome.scripting.insertCSS({
+    target: { tabId, allFrames: true },
+    files: ['styles.css']
+  });
   markTabInjected(tabId);
 }
 
 // mode control
 
 /**
- * activates inspection mode for tab
+ * activates inspection mode for tab and all iframes
  * @param {number} tabId
  * @returns {Promise<void>}
  */
 async function activateInspectionMode(tabId) {
-  await chrome.scripting.insertCSS({ target: { tabId }, files: ['styles.css'] });
+  await chrome.scripting.insertCSS({
+    target: { tabId, allFrames: true },
+    files: ['styles.css']
+  });
   
   const sent = await sendMessageSafe(tabId, { action: 'ACTIVATE' });
   if (!sent) {
@@ -220,13 +229,16 @@ async function activateInspectionMode(tabId) {
 }
 
 /**
- * deactivates inspection mode for tab
+ * deactivates inspection mode for tab and all iframes
  * @param {number} tabId
  * @returns {Promise<void>}
  */
 async function deactivateInspectionMode(tabId) {
   await sendMessageSafe(tabId, { action: 'DEACTIVATE' });
-  await chrome.scripting.removeCSS({ target: { tabId }, files: ['styles.css'] });
+  await chrome.scripting.removeCSS({
+    target: { tabId, allFrames: true },
+    files: ['styles.css']
+  });
   setTabState(tabId, false);
   chrome.action.setBadgeText({ tabId, text: '' });
 }
