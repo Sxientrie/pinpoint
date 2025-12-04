@@ -19,61 +19,109 @@ const BADGE_COLOR_ERROR = '#71717a';
 const PING_TIMEOUT_MS = 500;
 
 // ============================================================================
-// STATE MANAGEMENT (chrome.storage.session)
+// IN-MEMORY STATE (with async storage backup)
 // ============================================================================
 
-/**
- * Retrieves the set of tab IDs that have content scripts injected
- * @returns {Promise<Set<number>>} Set of tab IDs with injected scripts
- */
-async function getInjectedTabs() {
-  const result = await chrome.storage.session.get('injectedTabs');
-  return new Set(result.injectedTabs || []);
-}
+/** @type {Set<number>} tabs with active inspection mode */
+let activeTabs = new Set();
+
+/** @type {Set<number>} tabs with injected content scripts */
+let injectedTabs = new Set();
+
+/** @type {Set<number>} tabs currently processing a click (mutex) */
+const processingTabs = new Set();
+
+/** @type {boolean} whether state has been initialized from storage */
+let stateInitialized = false;
 
 /**
- * Persists the set of tab IDs with injected content scripts
- * @param {Set<number>} tabsSet - Set of tab IDs to persist
+ * Initializes in-memory state from chrome.storage.session.
+ * Called on first access or after SW wake-up.
  * @returns {Promise<void>}
  */
-async function setInjectedTabs(tabsSet) {
-  await chrome.storage.session.set({ injectedTabs: Array.from(tabsSet) });
+async function ensureStateInitialized() {
+  if (stateInitialized) return;
+  
+  const result = await chrome.storage.session.get(['activeTabs', 'injectedTabs']);
+  activeTabs = new Set(result.activeTabs || []);
+  injectedTabs = new Set(result.injectedTabs || []);
+  stateInitialized = true;
 }
 
 /**
- * Retrieves the activation state for a specific tab
- * @param {number} tabId - Chrome tab ID
- * @returns {Promise<boolean>} True if inspection mode is active for the tab
+ * Persists current in-memory state to storage (fire-and-forget)
+ * @returns {void}
  */
-async function getTabState(tabId) {
-  const result = await chrome.storage.session.get('tabState');
-  const tabState = result.tabState || {};
-  return tabState[tabId] || false;
+function syncStateToStorage() {
+  chrome.storage.session.set({
+    activeTabs: Array.from(activeTabs),
+    injectedTabs: Array.from(injectedTabs),
+  });
 }
 
 /**
- * Sets the activation state for a specific tab
+ * Returns whether a tab has inspection mode active
  * @param {number} tabId - Chrome tab ID
- * @param {boolean} isActive - Activation state to set
- * @returns {Promise<void>}
+ * @returns {boolean}
  */
-async function setTabState(tabId, isActive) {
-  const result = await chrome.storage.session.get('tabState');
-  const tabState = result.tabState || {};
-  tabState[tabId] = isActive;
-  await chrome.storage.session.set({ tabState });
+function getTabState(tabId) {
+  return activeTabs.has(tabId);
 }
 
 /**
- * Removes the activation state for a specific tab
+ * Sets the activation state for a tab (sync update, async backup)
  * @param {number} tabId - Chrome tab ID
- * @returns {Promise<void>}
+ * @param {boolean} isActive - Activation state
+ * @returns {void}
  */
-async function removeTabState(tabId) {
-  const result = await chrome.storage.session.get('tabState');
-  const tabState = result.tabState || {};
-  delete tabState[tabId];
-  await chrome.storage.session.set({ tabState });
+function setTabState(tabId, isActive) {
+  if (isActive) {
+    activeTabs.add(tabId);
+  } else {
+    activeTabs.delete(tabId);
+  }
+  syncStateToStorage();
+}
+
+/**
+ * Removes all state for a tab
+ * @param {number} tabId - Chrome tab ID
+ * @returns {void}
+ */
+function removeTabState(tabId) {
+  activeTabs.delete(tabId);
+  injectedTabs.delete(tabId);
+  syncStateToStorage();
+}
+
+/**
+ * Marks a tab as having an injected script
+ * @param {number} tabId - Chrome tab ID
+ * @returns {void}
+ */
+function markTabInjected(tabId) {
+  injectedTabs.add(tabId);
+  syncStateToStorage();
+}
+
+/**
+ * Acquires a processing lock for a tab (mutex)
+ * @param {number} tabId - Chrome tab ID
+ * @returns {boolean} True if lock acquired, false if already processing
+ */
+function acquireLock(tabId) {
+  if (processingTabs.has(tabId)) return false;
+  processingTabs.add(tabId);
+  return true;
+}
+
+/**
+ * Releases the processing lock for a tab
+ * @param {number} tabId - Chrome tab ID
+ * @returns {void}
+ */
+function releaseLock(tabId) {
+  processingTabs.delete(tabId);
 }
 
 // ============================================================================
@@ -136,10 +184,7 @@ async function injectScript(tabId) {
     target: { tabId },
     files: ['styles.css'],
   });
-  
-  const injectedTabs = await getInjectedTabs();
-  injectedTabs.add(tabId);
-  await setInjectedTabs(injectedTabs);
+  markTabInjected(tabId);
 }
 
 /**
@@ -154,7 +199,7 @@ async function activateInspectionMode(tabId) {
   });
   
   await chrome.tabs.sendMessage(tabId, { action: 'ACTIVATE' });
-  await setTabState(tabId, true);
+  setTabState(tabId, true);
   
   chrome.action.setBadgeText({ tabId, text: 'ON' });
   chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE_COLOR_ACTIVE });
@@ -173,7 +218,7 @@ async function deactivateInspectionMode(tabId) {
     files: ['styles.css'],
   });
   
-  await setTabState(tabId, false);
+  setTabState(tabId, false);
   chrome.action.setBadgeText({ tabId, text: '' });
 }
 
@@ -195,17 +240,23 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
   
+  if (!acquireLock(tabId)) {
+    return;
+  }
+  
   try {
+    await ensureStateInitialized();
+    
     const isScriptAlive = await checkScriptStatus(tabId);
     
     if (!isScriptAlive) {
       await injectScript(tabId);
-      await setTabState(tabId, false);
+      setTabState(tabId, false);
       await activateInspectionMode(tabId);
       return;
     }
     
-    const isActive = await getTabState(tabId);
+    const isActive = getTabState(tabId);
     
     if (isActive) {
       await deactivateInspectionMode(tabId);
@@ -213,11 +264,10 @@ chrome.action.onClicked.addListener(async (tab) => {
       await activateInspectionMode(tabId);
     }
   } catch (error) {
-    const injectedTabs = await getInjectedTabs();
-    injectedTabs.delete(tabId);
-    await setInjectedTabs(injectedTabs);
-    await setTabState(tabId, false);
+    removeTabState(tabId);
     showErrorBadge(tabId);
+  } finally {
+    releaseLock(tabId);
   }
 });
 
@@ -227,9 +277,7 @@ chrome.action.onClicked.addListener(async (tab) => {
  * @returns {Promise<void>}
  */
 chrome.tabs.onRemoved.addListener(async (tabId) => {
-  const injectedTabs = await getInjectedTabs();
-  injectedTabs.delete(tabId);
-  await setInjectedTabs(injectedTabs);
-  await removeTabState(tabId);
+  await ensureStateInitialized();
+  removeTabState(tabId);
   chrome.action.setBadgeText({ tabId, text: '' });
 });
