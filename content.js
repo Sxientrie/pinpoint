@@ -9,7 +9,9 @@
   'use strict';
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'ACTIVATE') {
+    if (message.action === 'PING') {
+      sendResponse({ status: 'alive' });
+    } else if (message.action === 'ACTIVATE') {
       init();
       sendResponse({ success: true });
     } else if (message.action === 'DEACTIVATE') {

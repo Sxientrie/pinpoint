@@ -16,6 +16,7 @@ const RESTRICTED_PROTOCOLS = ['chrome://', 'chrome-extension://', 'edge://', 'ab
 const ERROR_BADGE_DURATION_MS = 2000;
 const BADGE_COLOR_ACTIVE = '#ef4444';
 const BADGE_COLOR_ERROR = '#71717a';
+const PING_TIMEOUT_MS = 500;
 
 // ============================================================================
 // STATE MANAGEMENT (chrome.storage.session)
@@ -102,25 +103,43 @@ function showErrorBadge(tabId) {
 }
 
 /**
- * Injects content script and CSS into a tab if not already present
+ * Sends a PING to the content script to verify it is alive
  * @param {number} tabId - Chrome tab ID
- * @param {Set<number>} injectedTabs - Set of tabs with injected scripts
- * @returns {Promise<Set<number>>} Updated set of injected tabs
+ * @returns {Promise<boolean>} True if content script responded
  */
-async function ensureScriptInjected(tabId, injectedTabs) {
-  if (!injectedTabs.has(tabId)) {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js'],
+function checkScriptStatus(tabId) {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(false), PING_TIMEOUT_MS);
+    
+    chrome.tabs.sendMessage(tabId, { action: 'PING' }, (response) => {
+      clearTimeout(timeout);
+      if (chrome.runtime.lastError || !response || response.status !== 'alive') {
+        resolve(false);
+      } else {
+        resolve(true);
+      }
     });
-    await chrome.scripting.insertCSS({
-      target: { tabId },
-      files: ['styles.css'],
-    });
-    injectedTabs.add(tabId);
-    await setInjectedTabs(injectedTabs);
-  }
-  return injectedTabs;
+  });
+}
+
+/**
+ * Injects content script and CSS into a tab (unconditional)
+ * @param {number} tabId - Chrome tab ID
+ * @returns {Promise<void>}
+ */
+async function injectScript(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js'],
+  });
+  await chrome.scripting.insertCSS({
+    target: { tabId },
+    files: ['styles.css'],
+  });
+  
+  const injectedTabs = await getInjectedTabs();
+  injectedTabs.add(tabId);
+  await setInjectedTabs(injectedTabs);
 }
 
 /**
@@ -176,11 +195,17 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
   
-  const injectedTabs = await getInjectedTabs();
-  const isActive = await getTabState(tabId);
-  
   try {
-    await ensureScriptInjected(tabId, injectedTabs);
+    const isScriptAlive = await checkScriptStatus(tabId);
+    
+    if (!isScriptAlive) {
+      await injectScript(tabId);
+      await setTabState(tabId, false);
+      await activateInspectionMode(tabId);
+      return;
+    }
+    
+    const isActive = await getTabState(tabId);
     
     if (isActive) {
       await deactivateInspectionMode(tabId);
@@ -188,9 +213,9 @@ chrome.action.onClicked.addListener(async (tab) => {
       await activateInspectionMode(tabId);
     }
   } catch (error) {
-    const updatedTabs = await getInjectedTabs();
-    updatedTabs.delete(tabId);
-    await setInjectedTabs(updatedTabs);
+    const injectedTabs = await getInjectedTabs();
+    injectedTabs.delete(tabId);
+    await setInjectedTabs(injectedTabs);
     await setTabState(tabId, false);
     showErrorBadge(tabId);
   }
