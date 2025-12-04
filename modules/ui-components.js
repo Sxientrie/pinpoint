@@ -2,16 +2,71 @@
 // tooltip and detail panel creation, selector highlighting
 
 /**
- * tokenizes selector string for syntax highlighting
+ * creates a text span with optional token class
+ * @param {string} text
+ * @param {string} [className]
+ * @returns {HTMLSpanElement|Text}
+ */
+function createTokenSpan(text, className) {
+  if (!className) {
+    return document.createTextNode(text);
+  }
+  const span = document.createElement('span');
+  span.className = className;
+  span.textContent = text;
+  return span;
+}
+
+/**
+ * tokenizes selector string for syntax highlighting (xss-safe)
  * @param {string} sel
- * @returns {string} html with token spans
+ * @returns {DocumentFragment}
  */
 function highlightSelector(sel) {
-  return sel
-    .replace(/(\[.*?\])/g, '<span class="tok-attr">$1</span>')
-    .replace(/(#[\w-]+)/g, '<span class="tok-id">$1</span>')
-    .replace(/(\.[\w-]+)/g, '<span class="tok-class">$1</span>');
+  const frag = document.createDocumentFragment();
+  
+  // regex to match tokens: attributes [...], ids #..., classes .
+  const tokenPattern = /(\[.*?\])|(#[\w-]+)|(\.[\w-]+)/g;
+  
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = tokenPattern.exec(sel)) !== null) {
+    // text before this match
+    if (match.index > lastIndex) {
+      frag.appendChild(createTokenSpan(sel.slice(lastIndex, match.index)));
+    }
+    
+    // determine token type
+    const [fullMatch] = match;
+    let className = null;
+    
+    if (match[1]) className = 'tok-attr';      // [attribute]
+    else if (match[2]) className = 'tok-id';   // #id
+    else if (match[3]) className = 'tok-class'; // .class
+    
+    frag.appendChild(createTokenSpan(fullMatch, className));
+    lastIndex = tokenPattern.lastIndex;
+  }
+  
+  // remaining text after last match
+  if (lastIndex < sel.length) {
+    frag.appendChild(createTokenSpan(sel.slice(lastIndex)));
+  }
+  
+  return frag;
 }
+
+/**
+ * safely renders highlighted selector into container
+ * @param {string} selectorText
+ * @param {HTMLElement} container
+ */
+function renderSelector(selectorText, container) {
+  const frag = highlightSelector(selectorText);
+  container.replaceChildren(frag);
+}
+
 
 /**
  * creates svg element from path data
@@ -52,7 +107,7 @@ function createIcon(type) {
  * @param {number} activeIndex - which crumb is currently active
  */
 function renderPathCrumbs(pathData, container, activeIndex) {
-  container.innerHTML = '';
+  container.replaceChildren();
   
   pathData.forEach((segment, index) => {
     const crumb = document.createElement('button');
@@ -144,7 +199,7 @@ function handleCrumbClick(index) {
       selectorDisplay += `\n\n/* Shadow Depth: ${selectorData.depth} */`;
     }
 
-    detailPanel.querySelector('#pp-selector').innerHTML = highlightSelector(selectorDisplay);
+    renderSelector(selectorDisplay, detailPanel.querySelector('#pp-selector'));
     detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
     detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
     
