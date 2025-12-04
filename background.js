@@ -305,3 +305,16 @@ chrome.tabs.onRemoved.addListener(async tabId => {
   await ensureStateInitialized();
   await removeTabState(tabId);
 });
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  // detect navigation start (page reload or new url)
+  if (changeInfo.status !== 'loading') return;
+  
+  await ensureStateInitialized();
+  
+  // if tab was active, reset state (content scripts will be gone after navigation)
+  if (activeTabs.has(tabId)) {
+    await removeTabState(tabId);
+    chrome.action.setBadgeText({ tabId, text: '' });
+  }
+});
