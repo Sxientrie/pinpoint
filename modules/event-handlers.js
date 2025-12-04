@@ -164,6 +164,9 @@
   };
   
   E.captureElementData = function(target) {
+    // disconnect previous observer
+    E.disconnectObserver();
+    
     S.capturedElement = target;
     S.originalCapturedElement = target;
     
@@ -186,6 +189,41 @@
     S.detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
     S.detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
     UI.renderPathCrumbs(pathData, S.detailPanel.querySelector('#pp-path'), S.activeCrumbIndex);
+    
+    // clear any previous detached state
+    UI.clearDetachedWarning();
+    
+    // setup observer on parent to detect removal
+    setupElementObserver(target);
+  };
+  
+  function setupElementObserver(target) {
+    const parent = target.parentElement;
+    if (!parent) return;
+    
+    S.elementObserver = new MutationObserver(mutations => {
+      // check if element was removed
+      if (!document.contains(S.capturedElement)) {
+        UI.showDetachedWarning();
+        E.disconnectObserver();
+        
+        // clear highlight
+        const overlay = S.shadowRoot?.getElementById('pp-overlay');
+        if (overlay) overlay.style.opacity = '0';
+      }
+    });
+    
+    S.elementObserver.observe(parent, {
+      childList: true,
+      subtree: true
+    });
+  }
+  
+  E.disconnectObserver = function() {
+    if (S.elementObserver) {
+      S.elementObserver.disconnect();
+      S.elementObserver = null;
+    }
   };
   
   E.showDetailPanel = function() {
@@ -193,5 +231,6 @@
     S.isDetailPanelOpen = true;
     S.tooltip.style.display = 'none';
   };
+
 
 })(window.Pinpoint);

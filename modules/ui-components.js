@@ -284,9 +284,41 @@
     S.detailPanel.style.display = 'none';
     S.isDetailPanelOpen = false;
     
+    // disconnect observer when closing
+    P.Events.disconnectObserver();
+    
     const overlay = S.shadowRoot?.getElementById('pp-overlay');
     if (overlay) overlay.style.opacity = '0';
   };
+  
+  UI.showDetachedWarning = function() {
+    const panel = S.detailPanel;
+    if (!panel) return;
+    
+    // add warning banner if not exists
+    if (!panel.querySelector('.pp-detached-warning')) {
+      const warning = document.createElement('div');
+      warning.className = 'pp-detached-warning';
+      warning.textContent = '⚠ element detached';
+      panel.querySelector('.pp-panel-body').prepend(warning);
+    }
+    
+    // grey out the selector field
+    const selectorField = panel.querySelector('#pp-selector');
+    if (selectorField) selectorField.classList.add('pp-detached');
+  };
+  
+  UI.clearDetachedWarning = function() {
+    const panel = S.detailPanel;
+    if (!panel) return;
+    
+    const warning = panel.querySelector('.pp-detached-warning');
+    if (warning) warning.remove();
+    
+    const selectorField = panel.querySelector('#pp-selector');
+    if (selectorField) selectorField.classList.remove('pp-detached');
+  };
+
   
   function handleDragStart(e, panel) {
     if (e.target.id === 'pp-close') return;

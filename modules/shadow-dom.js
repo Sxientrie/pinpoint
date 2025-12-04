@@ -284,7 +284,25 @@
   color: #52525b;
   font-size: 10px;
 }
+
+.pp-detached-warning {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f87171;
+  text-align: center;
+}
+
+.pp-detached {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
   `;
   };
+
 
 })(window.Pinpoint);

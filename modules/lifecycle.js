@@ -18,6 +18,12 @@
     document.removeEventListener('click', E.handleClick, true);
     document.removeEventListener('keydown', E.handleKeyDown, true);
     
+    // disconnect mutation observer
+    if (S.elementObserver) {
+      S.elementObserver.disconnect();
+      S.elementObserver = null;
+    }
+    
     if (S.shadowHost?.parentNode) {
       S.shadowHost.parentNode.removeChild(S.shadowHost);
     }
@@ -59,6 +65,9 @@
     document.removeEventListener('mousemove', E.handleMouseMove, true);
     document.removeEventListener('click', E.handleClick, true);
     document.removeEventListener('keydown', E.handleKeyDown, true);
+    
+    // disconnect mutation observer
+    E.disconnectObserver();
     
     if (S.tooltip) S.tooltip.style.display = 'none';
     if (S.detailPanel) S.detailPanel.style.display = 'none';

@@ -37,5 +37,9 @@
   S.viewportHeight = 0;
   S.tooltipWidth = 0;
   S.tooltipHeight = 0;
+  
+  // mutation observer for captured element
+  S.elementObserver = null;
+
 
 })(window.Pinpoint);
