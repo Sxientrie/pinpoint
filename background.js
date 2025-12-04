@@ -6,7 +6,6 @@ const RESTRICTED_PROTOCOLS = ['chrome://', 'chrome-extension://', 'edge://', 'ab
 const ERROR_BADGE_DURATION_MS = 2000;
 const BADGE_COLOR_ACTIVE = '#ef4444';
 const BADGE_COLOR_ERROR = '#71717a';
-const PING_TIMEOUT_MS = 500;
 
 const CONTENT_SCRIPTS = [
   'modules/constants.js',
@@ -24,7 +23,35 @@ const CONTENT_SCRIPTS = [
 let activeTabs = new Set();
 let injectedTabs = new Set();
 const processingTabs = new Set();
+const connectedPorts = new Map(); // tabId -> port
 let stateInitialized = false;
+
+// port management (keepalive connections)
+
+chrome.runtime.onConnect.addListener(port => {
+  if (port.name !== 'pinpoint-keepalive') return;
+  
+  const tabId = port.sender?.tab?.id;
+  if (!tabId) return;
+  
+  connectedPorts.set(tabId, port);
+  
+  port.onDisconnect.addListener(async () => {
+    connectedPorts.delete(tabId);
+    await ensureStateInitialized();
+    await removeTabState(tabId);
+    chrome.action.setBadgeText({ tabId, text: '' });
+  });
+});
+
+/**
+ * checks if content script is alive via port
+ * @param {number} tabId
+ * @returns {boolean}
+ */
+function isScriptAlive(tabId) {
+  return connectedPorts.has(tabId);
+}
 
 // state management
 
@@ -153,21 +180,6 @@ function showErrorBadge(tabId) {
 }
 
 /**
- * pings content script to verify alive
- * @param {number} tabId
- * @returns {Promise<boolean>}
- */
-function checkScriptStatus(tabId) {
-  return new Promise(resolve => {
-    const timeout = setTimeout(() => resolve(false), PING_TIMEOUT_MS);
-    chrome.tabs.sendMessage(tabId, { action: 'PING' }, response => {
-      clearTimeout(timeout);
-      resolve(!chrome.runtime.lastError && response?.status === 'alive');
-    });
-  });
-}
-
-/**
  * sends message to tab, handles orphaned contexts silently
  * @param {number} tabId
  * @param {Object} message
@@ -281,9 +293,8 @@ chrome.action.onClicked.addListener(async tab => {
   
   try {
     await ensureStateInitialized();
-    const isScriptAlive = await checkScriptStatus(tabId);
     
-    if (!isScriptAlive) {
+    if (!isScriptAlive(tabId)) {
       await injectScript(tabId);
       await setTabState(tabId, false);
       await activateInspectionMode(tabId);
@@ -302,17 +313,18 @@ chrome.action.onClicked.addListener(async tab => {
 });
 
 chrome.tabs.onRemoved.addListener(async tabId => {
+  connectedPorts.delete(tabId);
   await ensureStateInitialized();
   await removeTabState(tabId);
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-  // detect navigation start (page reload or new url)
   if (changeInfo.status !== 'loading') return;
   
   await ensureStateInitialized();
   
-  // if tab was active, reset state (content scripts will be gone after navigation)
+  // port will disconnect on navigation, handled by onDisconnect
+  // but clear state early for badge update
   if (activeTabs.has(tabId)) {
     await removeTabState(tabId);
     chrome.action.setBadgeText({ tabId, text: '' });

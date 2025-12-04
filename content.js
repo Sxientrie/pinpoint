@@ -1,5 +1,5 @@
 // pinpoint - content script entry
-// message listener, routes to init/destroy
+// message listener, keepalive connection, routes to init/destroy
 
 if (window.__PINPOINT_LOADED__) {
   // already injected, skip re-execution
@@ -10,12 +10,17 @@ if (window.__PINPOINT_LOADED__) {
     'use strict';
     
     const P = window.Pinpoint;
+    
+    // establish keepalive connection to background
+    const port = chrome.runtime.connect({ name: 'pinpoint-keepalive' });
+    
+    // handle disconnect (extension reload, etc.)
+    port.onDisconnect.addListener(() => {
+      P.Lifecycle.cleanupOrphaned();
+    });
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       switch (message.action) {
-        case 'PING':
-          sendResponse({ status: 'alive' });
-          break;
         case 'ACTIVATE':
           P.Lifecycle.init();
           sendResponse({ success: true });
