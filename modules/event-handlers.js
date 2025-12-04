@@ -57,30 +57,38 @@ function isPinpointElement(element) {
 }
 
 /**
- * Hides tooltip and removes highlight
+ * Hides tooltip and overlay highlight
  * @returns {void}
  */
 function hideTooltipAndClearHighlight() {
   tooltip.style.display = 'none';
   
-  if (hoveredElement) {
-    hoveredElement.classList.remove(HIGHLIGHT_CLASS);
-    hoveredElement = null;
+  const overlay = shadowRoot.getElementById('pp-overlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
   }
+  
+  hoveredElement = null;
 }
 
 /**
- * Updates the highlighted element
+ * Updates the overlay to highlight target element
  * @param {HTMLElement} target - Element to highlight
  * @returns {void}
  */
 function updateHighlight(target) {
-  if (hoveredElement && hoveredElement !== target) {
-    hoveredElement.classList.remove(HIGHLIGHT_CLASS);
-  }
-
   hoveredElement = target;
-  target.classList.add(HIGHLIGHT_CLASS);
+  
+  const overlay = shadowRoot.getElementById('pp-overlay');
+  if (!overlay) return;
+  
+  const rect = target.getBoundingClientRect();
+  
+  overlay.style.top = rect.top + 'px';
+  overlay.style.left = rect.left + 'px';
+  overlay.style.width = rect.width + 'px';
+  overlay.style.height = rect.height + 'px';
+  overlay.style.opacity = '1';
 }
 
 /**

@@ -23,8 +23,12 @@ function createShadowRoot() {
   
   const styleSheet = document.createElement('style');
   styleSheet.textContent = getShadowStyles();
-  
   shadowRoot.appendChild(styleSheet);
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'pp-overlay';
+  shadowRoot.appendChild(overlay);
+  
   document.body.appendChild(shadowHost);
   
   return shadowRoot;
@@ -36,6 +40,26 @@ function createShadowRoot() {
  */
 function getShadowStyles() {
   return `
+    /* Highlight Overlay - Smooth gliding box */
+    #pp-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+      z-index: 2147483645;
+      border: 1px solid #ff0000;
+      background: rgba(186, 0, 0, 0.1);
+      opacity: 0;
+      transition: top 0.15s cubic-bezier(0.2, 0, 0.2, 1),
+                  left 0.15s cubic-bezier(0.2, 0, 0.2, 1),
+                  width 0.15s cubic-bezier(0.2, 0, 0.2, 1),
+                  height 0.15s cubic-bezier(0.2, 0, 0.2, 1),
+                  opacity 0.1s ease-out;
+      will-change: top, left, width, height, opacity;
+    }
+    
     /* Tooltip - Subtle warm bubble */
     #pp-tooltip {
       position: fixed;
