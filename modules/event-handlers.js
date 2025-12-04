@@ -51,14 +51,17 @@ function isPinpointElement(el) {
 }
 
 /**
- * hides tooltip and overlay
+ * hides tooltip and overlay, resets cached dimensions
  */
 function hideTooltipAndClearHighlight() {
   tooltip.style.display = 'none';
   const overlay = shadowRoot?.getElementById('pp-overlay');
   if (overlay) overlay.style.opacity = '0';
   hoveredElement = null;
+  tooltipWidth = 0;
+  tooltipHeight = 0;
 }
+
 
 /**
  * updates overlay to highlight element
@@ -78,7 +81,7 @@ function updateHighlight(target) {
 }
 
 /**
- * updates tooltip content and position
+ * updates tooltip content and position, flips if clipping viewport
  * @param {HTMLElement} target
  * @param {number} clientX
  * @param {number} clientY
@@ -91,9 +94,31 @@ function updateTooltip(target, clientX, clientY) {
   
   tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • Click to capture`;
   tooltip.style.display = 'block';
-  tooltip.style.left = (clientX + TOOLTIP_OFFSET_X) + 'px';
-  tooltip.style.top = (clientY + TOOLTIP_OFFSET_Y) + 'px';
+  
+  // cache dimensions once per hover (avoid layout reads in RAF)
+  if (!tooltipWidth) {
+    viewportWidth = window.innerWidth;
+    viewportHeight = window.innerHeight;
+    tooltipWidth = tooltip.offsetWidth;
+    tooltipHeight = tooltip.offsetHeight;
+  }
+  
+  // flip left if clipping right edge
+  let x = clientX + TOOLTIP_OFFSET_X;
+  if (x + tooltipWidth > viewportWidth) {
+    x = clientX - TOOLTIP_OFFSET_X - tooltipWidth;
+  }
+  
+  // flip up if clipping bottom edge
+  let y = clientY + TOOLTIP_OFFSET_Y;
+  if (y + tooltipHeight > viewportHeight) {
+    y = clientY - TOOLTIP_OFFSET_Y - tooltipHeight;
+  }
+  
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
 }
+
 
 /**
  * updates tooltip position centered above element

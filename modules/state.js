@@ -17,3 +17,8 @@ let dragStartY = 0;
 let panelOffsetX = 0;
 let panelOffsetY = 0;
 let dragRafPending = false;
+
+let viewportWidth = 0;
+let viewportHeight = 0;
+let tooltipWidth = 0;
+let tooltipHeight = 0;

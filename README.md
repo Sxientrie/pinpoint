@@ -183,4 +183,5 @@ none. vanilla javascript, no bundler, no external libraries.
 
 ---
 
+_build for developers_
 _generated 2025-12-05_
