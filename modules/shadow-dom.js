@@ -239,5 +239,45 @@ function getShadowStyles() {
 #pp-panel::-webkit-scrollbar-thumb:hover {
   background: rgba(82, 82, 91, 0.6);
 }
+
+.pp-crumb {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 2px 0;
+  background: rgba(63, 63, 70, 0.4);
+  border: 1px solid rgba(82, 82, 91, 0.3);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 11px;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pp-crumb:hover {
+  background: rgba(82, 82, 91, 0.6);
+  color: #fafafa;
+  border-color: rgba(113, 113, 122, 0.5);
+}
+
+.pp-crumb-current {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #f97316;
+  cursor: default;
+}
+
+.pp-crumb-current:hover {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.pp-crumb-sep {
+  display: inline-block;
+  margin: 0 4px;
+  color: #52525b;
+  font-size: 10px;
+}
   `;
 }
+

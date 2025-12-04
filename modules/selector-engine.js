@@ -290,27 +290,30 @@ function getAngularAttributes(el) {
 }
 
 /**
- * builds human-readable dom path
+ * builds dom path as array of segments for interactive breadcrumbs
  * @param {HTMLElement} el
- * @returns {string}
+ * @returns {Array<{label: string, depth: number}>}
  */
 function getDomPath(el) {
   const path = [];
   let current = el;
+  let depth = 0;
   
   while (current && current !== document.body) {
-    let part = current.tagName.toLowerCase();
+    let label = current.tagName.toLowerCase();
     
     if (current.id) {
-      part += `#${current.id}`;
+      label += `#${current.id}`;
     } else if (typeof current.className === 'string') {
       const cls = current.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-'))[0];
-      if (cls) part += `.${cls}`;
+      if (cls) label += `.${cls}`;
     }
     
-    path.unshift(part);
+    path.unshift({ label, depth });
     current = current.parentElement;
+    depth++;
   }
   
-  return path.join(' → ');
+  return path;
 }
+

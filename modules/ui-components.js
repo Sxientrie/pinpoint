@@ -46,6 +46,116 @@ function createIcon(type) {
 }
 
 /**
+ * renders interactive breadcrumb path from segment array
+ * @param {Array<{label: string, depth: number}>} pathData
+ * @param {HTMLElement} container
+ * @param {number} activeIndex - which crumb is currently active
+ */
+function renderPathCrumbs(pathData, container, activeIndex) {
+  container.innerHTML = '';
+  
+  pathData.forEach((segment, index) => {
+    const crumb = document.createElement('button');
+    crumb.className = 'pp-crumb';
+    crumb.textContent = segment.label;
+    crumb.setAttribute('data-index', index);
+    
+    if (index === activeIndex) {
+      crumb.classList.add('pp-crumb-current');
+    } else {
+      crumb.addEventListener('click', () => handleCrumbClick(index));
+    }
+    
+    container.appendChild(crumb);
+    
+    // separator between crumbs
+    if (index < pathData.length - 1) {
+      const sep = document.createElement('span');
+      sep.className = 'pp-crumb-sep';
+      sep.textContent = '→';
+      container.appendChild(sep);
+    }
+  });
+}
+
+/**
+ * updates active crumb without rebuilding path
+ * @param {number} index - crumb index to activate
+ */
+function updateActiveCrumb(index) {
+  const container = detailPanel.querySelector('#pp-path');
+  const crumbs = container.querySelectorAll('.pp-crumb');
+  
+  crumbs.forEach((crumb, i) => {
+    if (i === index) {
+      crumb.classList.add('pp-crumb-current');
+      crumb.replaceWith(crumb.cloneNode(true)); // remove old listener
+    } else {
+      crumb.classList.remove('pp-crumb-current');
+      // re-attach listener if needed
+      if (!crumb.onclick) {
+        const clone = crumb.cloneNode(true);
+        clone.addEventListener('click', () => handleCrumbClick(i));
+        crumb.replaceWith(clone);
+      }
+    }
+  });
+  
+  // refresh after replacements
+  const freshCrumbs = container.querySelectorAll('.pp-crumb');
+  freshCrumbs.forEach((crumb, i) => {
+    if (i === index) {
+      crumb.classList.add('pp-crumb-current');
+    } else {
+      crumb.classList.remove('pp-crumb-current');
+    }
+  });
+}
+
+/**
+ * navigates to element at crumb index, preserves full path
+ * @param {number} index - crumb index to navigate to
+ */
+function handleCrumbClick(index) {
+  if (!originalCapturedElement) return;
+  
+  const pathData = getDomPath(originalCapturedElement);
+  const targetDepth = pathData[index].depth;
+  
+  // traverse from original element
+  let target = originalCapturedElement;
+  for (let i = 0; i < targetDepth && target.parentElement; i++) {
+    target = target.parentElement;
+  }
+  
+  if (target && target !== document.body) {
+    activeCrumbIndex = index;
+    capturedElement = target;
+    
+    // update panel data without rebuilding path
+    const selectorData = getAllSelectorFormats(target);
+    const rect = target.getBoundingClientRect();
+    const dimensions = `${Math.round(rect.width)}px × ${Math.round(rect.height)}px`;
+    const angularAttrs = getAngularAttributes(target);
+
+    let selectorDisplay = selectorData.playwright;
+    if (selectorData.depth > 0) {
+      selectorDisplay += `\n\n/* Puppeteer */\n${selectorData.puppeteer}`;
+      selectorDisplay += `\n\n/* Shadow Depth: ${selectorData.depth} */`;
+    }
+
+    detailPanel.querySelector('#pp-selector').innerHTML = highlightSelector(selectorDisplay);
+    detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
+    detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
+    
+    // just update active state, don't rebuild
+    updateActiveCrumb(index);
+    updateHighlight(target);
+  }
+}
+
+
+/**
  * creates hover tooltip in shadow dom
  * @returns {HTMLElement}
  */
@@ -58,6 +168,7 @@ function createTooltip() {
 }
 
 /**
+
  * creates detail panel with copy buttons (csp-safe)
  * @returns {HTMLElement}
  */

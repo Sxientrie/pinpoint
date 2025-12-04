@@ -2,12 +2,17 @@
 // shared mutable state for inspection engine
 
 let hoveredElement = null;
+let capturedElement = null;
+let originalCapturedElement = null;
+let activeCrumbIndex = -1;
 let tooltip = null;
+
 let detailPanel = null;
 let isDetailPanelOpen = false;
 let isActive = false;
 let shadowRoot = null;
 let shadowHost = null;
+
 let rafPending = false;
 let lastMouseEvent = null;
 

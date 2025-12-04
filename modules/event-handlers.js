@@ -199,15 +199,21 @@ function handleClick(event) {
 }
 
 /**
- * captures element data and populates panel
+ * captures element data and populates panel (initial capture)
  * @param {HTMLElement} target
  */
 function captureElementData(target) {
+  capturedElement = target;
+  originalCapturedElement = target;
+  
   const selectorData = getAllSelectorFormats(target);
   const rect = target.getBoundingClientRect();
   const dimensions = `${Math.round(rect.width)}px × ${Math.round(rect.height)}px`;
   const angularAttrs = getAngularAttributes(target);
-  const domPath = getDomPath(target);
+  const pathData = getDomPath(target);
+  
+  // set active to last crumb (the clicked element)
+  activeCrumbIndex = pathData.length - 1;
 
   let selectorDisplay = selectorData.playwright;
   
@@ -219,8 +225,10 @@ function captureElementData(target) {
   detailPanel.querySelector('#pp-selector').innerHTML = highlightSelector(selectorDisplay);
   detailPanel.querySelector('#pp-dimensions').textContent = dimensions;
   detailPanel.querySelector('#pp-angular').textContent = angularAttrs;
-  detailPanel.querySelector('#pp-path').textContent = domPath;
+  renderPathCrumbs(pathData, detailPanel.querySelector('#pp-path'), activeCrumbIndex);
 }
+
+
 
 /**
  * shows detail panel, hides tooltip
