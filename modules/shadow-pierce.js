@@ -322,25 +322,31 @@ function queryDeepAll(root, selector) {
 }
 
 /**
- * Recursively finds all Shadow DOMs in a root
+ * Finds all Shadow DOMs in a root using iterative traversal
+ * Stack-based to prevent call-stack overflow on deep trees
  * @param {Document|ShadowRoot} root - Starting root
  * @returns {ShadowRoot[]} Array of all shadow roots
  */
 function findAllShadowRoots(root) {
   const shadowRoots = [];
+  const stack = [root];
   
-  const walker = document.createTreeWalker(
-    root,
-    NodeFilter.SHOW_ELEMENT,
-    null,
-    false
-  );
-  
-  let node;
-  while (node = walker.nextNode()) {
-    if (node.shadowRoot) {
-      shadowRoots.push(node.shadowRoot);
-      shadowRoots.push(...findAllShadowRoots(node.shadowRoot));
+  while (stack.length > 0) {
+    const currentRoot = stack.pop();
+    
+    const walker = document.createTreeWalker(
+      currentRoot,
+      NodeFilter.SHOW_ELEMENT,
+      null,
+      false
+    );
+    
+    let node;
+    while (node = walker.nextNode()) {
+      if (node.shadowRoot) {
+        shadowRoots.push(node.shadowRoot);
+        stack.push(node.shadowRoot);
+      }
     }
   }
   

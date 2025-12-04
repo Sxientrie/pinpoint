@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "description": "pinpoint any element, anywhere. universal dom inspector with shadow-piercing selectors for playwright, puppeteer, and automation.",
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["<all_urls>"],
   "action": {
     "default_icon": {
       "16": "assets/icon-128.png",
@@ -16,24 +15,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": [
-        "modules/constants.js",
-        "modules/state.js",
-        "modules/shadow-dom.js",
-        "modules/shadow-pierce.js",
-        "modules/selector-engine.js",
-        "modules/ui-components.js",
-        "modules/event-handlers.js",
-        "modules/lifecycle.js",
-        "content.js"
-      ],
-      "css": ["styles.css"],
-      "run_at": "document_idle"
-    }
-  ],
   "icons": {
     "16": "assets/icon-128.png",
     "48": "assets/icon-128.png",

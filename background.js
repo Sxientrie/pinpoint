@@ -172,13 +172,24 @@ function checkScriptStatus(tabId) {
 
 /**
  * Injects content script and CSS into a tab (unconditional)
+ * Loads modules in dependency order
  * @param {number} tabId - Chrome tab ID
  * @returns {Promise<void>}
  */
 async function injectScript(tabId) {
   await chrome.scripting.executeScript({
     target: { tabId },
-    files: ['content.js'],
+    files: [
+      'modules/constants.js',
+      'modules/state.js',
+      'modules/shadow-dom.js',
+      'modules/shadow-pierce.js',
+      'modules/selector-engine.js',
+      'modules/ui-components.js',
+      'modules/event-handlers.js',
+      'modules/lifecycle.js',
+      'content.js'
+    ],
   });
   await chrome.scripting.insertCSS({
     target: { tabId },

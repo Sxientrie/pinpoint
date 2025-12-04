@@ -6,39 +6,66 @@
  * For Shadow DOM elements, generates piercing selectors for Playwright/Puppeteer
  */
 
+/** @type {WeakMap<HTMLElement, string>} Cache for optimal selectors */
+const selectorCache = new WeakMap();
+
+/** @type {WeakMap<HTMLElement, Object>} Cache for full selector formats */
+const formatCache = new WeakMap();
+
 /**
  * Generates the most stable CSS selector for an element
- * Automatically detects Shadow DOM and returns piercing selector
+ * Uses WeakMap cache and fast-path for light DOM elements
  * @param {HTMLElement} element - Target element
  * @returns {string} Optimized CSS selector (piercing if in Shadow DOM)
  */
 function getOptimalSelector(element) {
-  if (isInShadowDOM(element)) {
+  const cached = selectorCache.get(element);
+  if (cached) return cached;
+  
+  const root = element.getRootNode();
+  const inShadow = root instanceof ShadowRoot;
+  
+  let selector;
+  if (inShadow) {
     const piercing = getPiercingSelector(element);
-    return piercing.playwright;
+    selector = piercing.playwright;
+  } else {
+    selector = getLightDOMSelector(element);
   }
   
-  return getLightDOMSelector(element);
+  selectorCache.set(element, selector);
+  return selector;
 }
 
 /**
  * Gets all selector formats for an element (for UI display)
+ * Uses WeakMap cache for repeated queries
  * @param {HTMLElement} element - Target element
  * @returns {Object} Selector formats
  */
 function getAllSelectorFormats(element) {
-  if (isInShadowDOM(element)) {
-    return getPiercingSelector(element);
+  const cached = formatCache.get(element);
+  if (cached) return cached;
+  
+  const root = element.getRootNode();
+  const inShadow = root instanceof ShadowRoot;
+  
+  let result;
+  if (inShadow) {
+    result = getPiercingSelector(element);
+  } else {
+    const selector = getLightDOMSelector(element);
+    result = {
+      playwright: selector,
+      puppeteer: selector,
+      css: selector,
+      custom: selector,
+      depth: 0
+    };
   }
   
-  const selector = getLightDOMSelector(element);
-  return {
-    playwright: selector,
-    puppeteer: selector,
-    css: selector,
-    custom: selector,
-    depth: 0
-  };
+  formatCache.set(element, result);
+  return result;
 }
 
 /**
