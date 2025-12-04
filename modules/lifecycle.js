@@ -14,6 +14,7 @@ function isContextValid() {
 function cleanupOrphaned() {
   document.removeEventListener('mousemove', handleMouseMove, true);
   document.removeEventListener('click', handleClick, true);
+  document.removeEventListener('keydown', handleKeyDown, true);
   
   if (shadowHost?.parentNode) {
     shadowHost.parentNode.removeChild(shadowHost);
@@ -43,6 +44,7 @@ function init() {
 
   document.addEventListener('mousemove', handleMouseMove, true);
   document.addEventListener('click', handleClick, true);
+  document.addEventListener('keydown', handleKeyDown, true);
   
   isActive = true;
 }
@@ -60,6 +62,7 @@ function destroy() {
   
   document.removeEventListener('mousemove', handleMouseMove, true);
   document.removeEventListener('click', handleClick, true);
+  document.removeEventListener('keydown', handleKeyDown, true);
   
   if (tooltip) tooltip.style.display = 'none';
   if (detailPanel) detailPanel.style.display = 'none';
@@ -73,3 +76,4 @@ function destroy() {
   lastMouseEvent = null;
   rafPending = false;
 }
+

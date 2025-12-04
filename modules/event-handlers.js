@@ -1,5 +1,5 @@
 // pinpoint - event handlers
-// mouse/click with raf throttling
+// mouse/click/keyboard with raf throttling
 
 /**
  * handles mousemove with raf throttling
@@ -93,6 +93,66 @@ function updateTooltip(target, clientX, clientY) {
   tooltip.style.display = 'block';
   tooltip.style.left = (clientX + TOOLTIP_OFFSET_X) + 'px';
   tooltip.style.top = (clientY + TOOLTIP_OFFSET_Y) + 'px';
+}
+
+/**
+ * updates tooltip position centered above element
+ * @param {HTMLElement} target
+ */
+function updateTooltipCentered(target) {
+  const tag = target.tagName.toLowerCase();
+  const classes = typeof target.className === 'string'
+    ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
+    : '';
+  
+  tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • ↑↓←→ navigate`;
+  tooltip.style.display = 'block';
+  
+  const rect = target.getBoundingClientRect();
+  tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+  tooltip.style.top = (rect.top - 30) + 'px';
+}
+
+// keyboard navigation
+
+/**
+ * handles arrow key navigation when element is hovered
+ * @param {KeyboardEvent} event
+ */
+function handleKeyDown(event) {
+  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
+  if (!isActive || isDetailPanelOpen || !hoveredElement) return;
+  
+  const key = event.key;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  let newTarget = null;
+  
+  switch (key) {
+    case 'ArrowUp':
+      newTarget = hoveredElement.parentElement;
+      break;
+    case 'ArrowDown':
+      newTarget = hoveredElement.firstElementChild;
+      break;
+    case 'ArrowLeft':
+      newTarget = hoveredElement.previousElementSibling;
+      break;
+    case 'ArrowRight':
+      newTarget = hoveredElement.nextElementSibling;
+      break;
+  }
+  
+  // validate new target
+  if (!newTarget) return;
+  if (newTarget === document.body || newTarget === document.documentElement) return;
+  if (isPinpointElement(newTarget)) return;
+  
+  updateHighlight(newTarget);
+  updateTooltipCentered(newTarget);
 }
 
 /**
