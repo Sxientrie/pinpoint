@@ -4,8 +4,6 @@
 
 Universal DOM inspector with shadow-piercing selectors for Playwright, Puppeteer, and automation testing.
 
----
-
 ## Features
 
 - alt+Hover to highlight elements
@@ -15,8 +13,6 @@ Universal DOM inspector with shadow-piercing selectors for Playwright, Puppeteer
 - individual copy buttons for selector, dimensions, path
 - works on any website
 
----
-
 ## Installation
 
 1. Clone or download this repo
@@ -24,8 +20,6 @@ Universal DOM inspector with shadow-piercing selectors for Playwright, Puppeteer
 3. Enable Developer mode
 4. Click Load unpacked
 5. Select the `pinpoint` folder
-
----
 
 ## Usage
 
@@ -36,19 +30,15 @@ Universal DOM inspector with shadow-piercing selectors for Playwright, Puppeteer
 | Alt + Click      | Capture element data |
 | ESC              | Close panel          |
 
----
-
 ## Selector Priority
 
 Pinpoint generates the most stable selector possible:
-```
+
 1. Unique ID — #submit-button
 2. Data Attributes — [data-testid="login"]
 3. ARIA Attributes — [aria-label="Close"]
 4. CSS Classes — button.primary`
 5. Structural Path — div > form > button:nth-of-type(2)
-```
----
 
 ## Shadow DOM Support
 
@@ -68,31 +58,6 @@ The panel shows:
 - Multiple selector formats
 - Validation-ready selectors
 
----
-
-## Project Structure
-
-```
-pinpoint/
-├── manifest.json
-├── background.js
-├── content.js
-├── styles.css
-├── icon.png
-├── modules/
-│   ├── constants.js
-│   ├── state.js
-│   ├── shadow-dom.js
-│   ├── shadow-pierce.js
-│   ├── selector-engine.js
-│   ├── ui-components.js
-│   ├── event-handlers.js
-│   └── lifecycle.js
-└── README.md
-```
-
----
-
 ## Use Cases
 
 - QA Automation — Generate stable selectors for Playwright/Puppeteer
@@ -100,8 +65,6 @@ pinpoint/
 - Web Scraping — Find reliable element paths
 - Component Development — Inspect Shadow DOM internals
 - Debugging — Understand DOM structure quickly
-
----
 
 ## Permissions
 
@@ -112,10 +75,8 @@ pinpoint/
 | `storage`    | Persist state across browser sessions |
 | `<all_urls>` | Universal site support                |
 
----
 
 ## License
-
 MIT
 
 ---
