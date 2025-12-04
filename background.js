@@ -165,11 +165,34 @@ async function sendMessageSafe(tabId, message) {
 // injection
 
 /**
- * injects content scripts and css into tab
+ * checks if scripts already injected via global flag
+ * @param {number} tabId
+ * @returns {Promise<boolean>}
+ */
+async function isAlreadyInjected(tabId) {
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => !!window.__PINPOINT_LOADED__
+    });
+    return result?.result === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * injects content scripts and css into tab (idempotent)
  * @param {number} tabId
  * @returns {Promise<void>}
  */
 async function injectScript(tabId) {
+  const alreadyLoaded = await isAlreadyInjected(tabId);
+  if (alreadyLoaded) {
+    markTabInjected(tabId);
+    return;
+  }
+  
   await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPTS });
   await chrome.scripting.insertCSS({ target: { tabId }, files: ['styles.css'] });
   markTabInjected(tabId);
