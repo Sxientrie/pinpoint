@@ -1,22 +1,22 @@
-/**
- * Pinpoint - Content Script Main Entry Point
- * 
- * Coordinates all modules and manages communication with background script.
- * Modules are loaded in dependency order via manifest.json.
- */
+// pinpoint - content script entry
+// message listener, routes to init/destroy
 
 (function() {
   'use strict';
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'PING') {
-      sendResponse({ status: 'alive' });
-    } else if (message.action === 'ACTIVATE') {
-      init();
-      sendResponse({ success: true });
-    } else if (message.action === 'DEACTIVATE') {
-      destroy();
-      sendResponse({ success: true });
+    switch (message.action) {
+      case 'PING':
+        sendResponse({ status: 'alive' });
+        break;
+      case 'ACTIVATE':
+        init();
+        sendResponse({ success: true });
+        break;
+      case 'DEACTIVATE':
+        destroy();
+        sendResponse({ success: true });
+        break;
     }
   });
 })();

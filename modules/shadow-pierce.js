@@ -1,77 +1,43 @@
-/**
- * Pinpoint - Shadow DOM Piercing Selectors
- * 
- * Generates selectors that traverse Shadow DOM boundaries for:
- * - Playwright: `locator('host >> .internal')`
- * - Puppeteer: `pierce/host .internal`
- * - Custom: `host::shadow(.internal)`
- * 
- * @module shadow-pierce
- */
+// pinpoint - shadow pierce
+// generates selectors traversing shadow dom boundaries
+
+const ARIA_ATTRS_PIERCE = ['aria-label', 'role', 'aria-describedby'];
 
 /**
- * Selector format types for different tools
- * @typedef {'playwright' | 'puppeteer' | 'css' | 'custom'} SelectorFormat
+ * generates piercing selector for all tool formats
+ * @param {HTMLElement} el
+ * @returns {Object}
  */
-
-const SHADOW_SEPARATOR = {
-  playwright: ' >> ',
-  puppeteer: '/',
-  css: ' ',
-  custom: '::shadow('
-};
-
-/**
- * Generates a piercing selector that traverses Shadow DOM boundaries
- * @param {HTMLElement} element - Target element (possibly inside shadow root)
- * @returns {Object} Selector object with multiple format outputs
- */
-function getPiercingSelector(element) {
-  const path = buildShadowPath(element);
-  
+function getPiercingSelector(el) {
+  const path = buildShadowPath(el);
   return {
     playwright: formatPlaywrightSelector(path),
     puppeteer: formatPuppeteerSelector(path),
     css: formatCSSSelector(path),
     custom: formatCustomSelector(path),
-    path: path,
+    path,
     depth: path.filter(p => p.isShadowBoundary).length
   };
 }
 
 /**
- * Builds an array of selector segments traversing shadow boundaries
- * @param {HTMLElement} element - Target element
- * @returns {Array<{selector: string, isShadowBoundary: boolean}>} Path segments
+ * builds selector path traversing shadow boundaries
+ * @param {HTMLElement} el
+ * @returns {Array<{selector: string, isShadowBoundary: boolean}>}
  */
-function buildShadowPath(element) {
+function buildShadowPath(el) {
   const path = [];
-  let current = element;
+  let current = el;
   
   while (current && current !== document.documentElement) {
     const root = current.getRootNode();
     
     if (root instanceof ShadowRoot) {
-      const localSelector = getLocalSelector(current, root);
-      path.unshift({
-        selector: localSelector,
-        isShadowBoundary: false
-      });
-      
-      const host = root.host;
-      const hostSelector = getHostSelector(host);
-      path.unshift({
-        selector: hostSelector,
-        isShadowBoundary: true
-      });
-      
-      current = host;
+      path.unshift({ selector: getLocalSelector(current, root), isShadowBoundary: false });
+      path.unshift({ selector: getHostSelector(root.host), isShadowBoundary: true });
+      current = root.host;
     } else {
-      const localSelector = getLocalSelector(current, document);
-      path.unshift({
-        selector: localSelector,
-        isShadowBoundary: false
-      });
+      path.unshift({ selector: getLocalSelector(current, document), isShadowBoundary: false });
       break;
     }
   }
@@ -80,156 +46,138 @@ function buildShadowPath(element) {
 }
 
 /**
- * Gets the most stable selector for an element within its local root
- * @param {HTMLElement} element - Target element
- * @param {Document|ShadowRoot} root - Local root context
- * @returns {string} CSS selector
+ * gets stable selector within local root context
+ * @param {HTMLElement} el
+ * @param {Document|ShadowRoot} root
+ * @returns {string}
  */
-function getLocalSelector(element, root) {
-  if (element.id) {
-    const selector = `#${CSS.escape(element.id)}`;
-    if (isUniqueSelectorInRoot(selector, root)) return selector;
+function getLocalSelector(el, root) {
+  if (el.id) {
+    const sel = `#${CSS.escape(el.id)}`;
+    if (isUniqueSelectorInRoot(sel, root)) return sel;
   }
   
-  const dataAttrs = Array.from(element.attributes)
-    .filter(attr => attr.name.startsWith('data-'));
-  
-  for (const attr of dataAttrs) {
-    const selector = `[${attr.name}="${CSS.escape(attr.value)}"]`;
-    if (isUniqueSelectorInRoot(selector, root)) return selector;
+  for (const attr of el.attributes) {
+    if (!attr.name.startsWith('data-')) continue;
+    const sel = `[${attr.name}="${CSS.escape(attr.value)}"]`;
+    if (isUniqueSelectorInRoot(sel, root)) return sel;
   }
   
-  const ariaAttrs = ['aria-label', 'role', 'aria-describedby'];
-  for (const attrName of ariaAttrs) {
-    const value = element.getAttribute(attrName);
-    if (value) {
-      const selector = `[${attrName}="${CSS.escape(value)}"]`;
-      if (isUniqueSelectorInRoot(selector, root)) return selector;
-    }
+  for (const attrName of ARIA_ATTRS_PIERCE) {
+    const value = el.getAttribute(attrName);
+    if (!value) continue;
+    const sel = `[${attrName}="${CSS.escape(value)}"]`;
+    if (isUniqueSelectorInRoot(sel, root)) return sel;
   }
   
-  if (element.className && typeof element.className === 'string') {
-    const classes = element.className.trim().split(/\s+/).filter(c => c);
+  if (typeof el.className === 'string') {
+    const classes = el.className.trim().split(/\s+/).filter(c => c);
     if (classes.length) {
-      const selector = element.tagName.toLowerCase() + '.' + classes.join('.');
-      if (isUniqueSelectorInRoot(selector, root)) return selector;
+      const sel = el.tagName.toLowerCase() + '.' + classes.join('.');
+      if (isUniqueSelectorInRoot(sel, root)) return sel;
     }
   }
   
-  return buildNthChildSelector(element, root);
+  return buildNthChildSelector(el);
 }
 
 /**
- * Gets selector for shadow host element
- * @param {HTMLElement} host - Shadow host element
- * @returns {string} CSS selector for host
+ * gets selector for shadow host element
+ * @param {HTMLElement} host
+ * @returns {string}
  */
 function getHostSelector(host) {
-  const tagName = host.tagName.toLowerCase();
+  const tag = host.tagName.toLowerCase();
   
-  if (host.id) return `${tagName}#${CSS.escape(host.id)}`;
+  if (host.id) return `${tag}#${CSS.escape(host.id)}`;
   
-  const dataAttrs = Array.from(host.attributes)
-    .filter(attr => attr.name.startsWith('data-'));
-  
-  for (const attr of dataAttrs) {
-    return `${tagName}[${attr.name}="${CSS.escape(attr.value)}"]`;
+  for (const attr of host.attributes) {
+    if (attr.name.startsWith('data-')) {
+      return `${tag}[${attr.name}="${CSS.escape(attr.value)}"]`;
+    }
   }
   
-  if (host.className && typeof host.className === 'string') {
-    const firstClass = host.className.trim().split(/\s+/)[0];
-    if (firstClass) return `${tagName}.${CSS.escape(firstClass)}`;
+  if (typeof host.className === 'string') {
+    const cls = host.className.trim().split(/\s+/)[0];
+    if (cls) return `${tag}.${CSS.escape(cls)}`;
   }
   
-  return tagName;
+  return tag;
 }
 
 /**
- * Checks selector uniqueness within a root context
- * @param {string} selector - CSS selector
- * @param {Document|ShadowRoot} root - Root to query
- * @returns {boolean} True if unique
+ * @param {string} sel
+ * @param {Document|ShadowRoot} root
+ * @returns {boolean}
  */
-function isUniqueSelectorInRoot(selector, root) {
+function isUniqueSelectorInRoot(sel, root) {
   try {
-    return root.querySelectorAll(selector).length === 1;
+    return root.querySelectorAll(sel).length === 1;
   } catch {
     return false;
   }
 }
 
 /**
- * Builds nth-child based selector as fallback
- * @param {HTMLElement} element - Target element
- * @param {Document|ShadowRoot} root - Root context
- * @returns {string} nth-child selector
+ * builds nth-of-type fallback selector
+ * @param {HTMLElement} el
+ * @returns {string}
  */
-function buildNthChildSelector(element, root) {
-  const tag = element.tagName.toLowerCase();
-  const parent = element.parentElement;
-  
+function buildNthChildSelector(el) {
+  const tag = el.tagName.toLowerCase();
+  const parent = el.parentElement;
   if (!parent) return tag;
   
-  const siblings = Array.from(parent.children).filter(
-    child => child.tagName.toLowerCase() === tag
-  );
-  
+  const siblings = Array.from(parent.children).filter(c => c.tagName.toLowerCase() === tag);
   if (siblings.length === 1) return tag;
   
-  const index = siblings.indexOf(element) + 1;
-  return `${tag}:nth-of-type(${index})`;
+  return `${tag}:nth-of-type(${siblings.indexOf(el) + 1})`;
 }
 
+// formatters
+
 /**
- * Formats selector for Playwright: `host >> .internal`
- * @param {Array} path - Selector path segments
- * @returns {string} Playwright-compatible selector
+ * @param {Array} path
+ * @returns {string} playwright format: host >> .internal
  */
 function formatPlaywrightSelector(path) {
   const segments = [];
-  let currentSegment = [];
+  let current = [];
   
   for (const part of path) {
-    if (part.isShadowBoundary && currentSegment.length > 0) {
-      segments.push(currentSegment.join(' '));
-      currentSegment = [part.selector];
+    if (part.isShadowBoundary && current.length > 0) {
+      segments.push(current.join(' '));
+      current = [part.selector];
     } else {
-      currentSegment.push(part.selector);
+      current.push(part.selector);
     }
   }
   
-  if (currentSegment.length > 0) {
-    segments.push(currentSegment.join(' '));
-  }
-  
+  if (current.length > 0) segments.push(current.join(' '));
   return segments.join(' >> ');
 }
 
 /**
- * Formats selector for Puppeteer pierce: `pierce/host .internal`
- * @param {Array} path - Selector path segments
- * @returns {string} Puppeteer-compatible selector
+ * @param {Array} path
+ * @returns {string} puppeteer format: pierce/selector
  */
 function formatPuppeteerSelector(path) {
   const hasShadow = path.some(p => p.isShadowBoundary);
-  const cssPath = path.map(p => p.selector).join(' ');
-  
-  return hasShadow ? `pierce/${cssPath}` : cssPath;
+  const css = path.map(p => p.selector).join(' ');
+  return hasShadow ? `pierce/${css}` : css;
 }
 
 /**
- * Formats as standard CSS (flattened, for light DOM only)
- * @param {Array} path - Selector path segments
- * @returns {string} Standard CSS selector
+ * @param {Array} path
+ * @returns {string} flattened css
  */
 function formatCSSSelector(path) {
   return path.map(p => p.selector).join(' ');
 }
 
 /**
- * Formats with custom shadow notation: `host::shadow(.internal)`
- * @param {Array} path - Selector path segments
- * @returns {string} Custom notation selector
+ * @param {Array} path
+ * @returns {string} custom notation: host::shadow(.internal)
  */
 function formatCustomSelector(path) {
   let result = '';
@@ -255,48 +203,44 @@ function formatCustomSelector(path) {
   }
   
   if (inShadow) result += ')';
-  
   return result;
 }
 
+// query utilities
+
 /**
- * Queries deep into Shadow DOM to find element
- * Validates that a piercing selector actually works
- * @param {Document|ShadowRoot} root - Starting root
- * @param {string} selector - Piercing selector (Playwright format)
- * @returns {HTMLElement|null} Found element or null
+ * queries deep into shadow dom
+ * @param {Document|ShadowRoot} root
+ * @param {string} selector - playwright format
+ * @returns {HTMLElement|null}
  */
 function queryDeep(root, selector) {
   const segments = selector.split(' >> ').map(s => s.trim());
-  
   let currentRoot = root;
-  let element = null;
+  let el = null;
   
   for (let i = 0; i < segments.length; i++) {
-    const segment = segments[i];
-    
     try {
-      element = currentRoot.querySelector(segment);
+      el = currentRoot.querySelector(segments[i]);
     } catch {
       return null;
     }
     
-    if (!element) return null;
-    
+    if (!el) return null;
     if (i < segments.length - 1) {
-      if (!element.shadowRoot) return null;
-      currentRoot = element.shadowRoot;
+      if (!el.shadowRoot) return null;
+      currentRoot = el.shadowRoot;
     }
   }
   
-  return element;
+  return el;
 }
 
 /**
- * Queries all matching elements deep into Shadow DOM
- * @param {Document|ShadowRoot} root - Starting root
- * @param {string} selector - Piercing selector
- * @returns {HTMLElement[]} Array of found elements
+ * queries all matching elements deep
+ * @param {Document|ShadowRoot} root
+ * @param {string} selector
+ * @returns {HTMLElement[]}
  */
 function queryDeepAll(root, selector) {
   const segments = selector.split(' >> ').map(s => s.trim());
@@ -305,16 +249,13 @@ function queryDeepAll(root, selector) {
     return Array.from(root.querySelectorAll(segments[0]));
   }
   
-  const firstSegment = segments[0];
-  const restSelector = segments.slice(1).join(' >> ');
   const results = [];
-  
-  const hosts = root.querySelectorAll(firstSegment);
+  const hosts = root.querySelectorAll(segments[0]);
+  const rest = segments.slice(1).join(' >> ');
   
   for (const host of hosts) {
     if (host.shadowRoot) {
-      const found = queryDeepAll(host.shadowRoot, restSelector);
-      results.push(...found);
+      results.push(...queryDeepAll(host.shadowRoot, rest));
     }
   }
   
@@ -322,10 +263,9 @@ function queryDeepAll(root, selector) {
 }
 
 /**
- * Finds all Shadow DOMs in a root using iterative traversal
- * Stack-based to prevent call-stack overflow on deep trees
- * @param {Document|ShadowRoot} root - Starting root
- * @returns {ShadowRoot[]} Array of all shadow roots
+ * finds all shadow roots iteratively (stack-based)
+ * @param {Document|ShadowRoot} root
+ * @returns {ShadowRoot[]}
  */
 function findAllShadowRoots(root) {
   const shadowRoots = [];
@@ -333,13 +273,7 @@ function findAllShadowRoots(root) {
   
   while (stack.length > 0) {
     const currentRoot = stack.pop();
-    
-    const walker = document.createTreeWalker(
-      currentRoot,
-      NodeFilter.SHOW_ELEMENT,
-      null,
-      false
-    );
+    const walker = document.createTreeWalker(currentRoot, NodeFilter.SHOW_ELEMENT, null, false);
     
     let node;
     while (node = walker.nextNode()) {
@@ -354,22 +288,20 @@ function findAllShadowRoots(root) {
 }
 
 /**
- * Checks if element is inside a Shadow DOM
- * @param {HTMLElement} element - Element to check
- * @returns {boolean} True if inside shadow root
+ * @param {HTMLElement} el
+ * @returns {boolean}
  */
-function isInShadowDOM(element) {
-  return element.getRootNode() instanceof ShadowRoot;
+function isInShadowDOM(el) {
+  return el.getRootNode() instanceof ShadowRoot;
 }
 
 /**
- * Gets the shadow depth of an element (how many shadow boundaries crossed)
- * @param {HTMLElement} element - Target element
- * @returns {number} Shadow depth (0 = light DOM)
+ * @param {HTMLElement} el
+ * @returns {number} shadow boundary count
  */
-function getShadowDepth(element) {
+function getShadowDepth(el) {
   let depth = 0;
-  let current = element;
+  let current = el;
   
   while (current) {
     const root = current.getRootNode();

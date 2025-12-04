@@ -1,13 +1,41 @@
-/**
- * Pinpoint - Lifecycle Management
- * Initialization and cleanup
- */
+// pinpoint - lifecycle
+// init/destroy, orphaned context handling
 
 /**
- * Initializes the inspection engine
- * @returns {void}
+ * @returns {boolean} true if extension context valid
+ */
+function isContextValid() {
+  return !!(chrome.runtime?.id);
+}
+
+/**
+ * cleans up orphaned script after extension reload
+ */
+function cleanupOrphaned() {
+  document.removeEventListener('mousemove', handleMouseMove, true);
+  document.removeEventListener('click', handleClick, true);
+  
+  if (shadowHost?.parentNode) {
+    shadowHost.parentNode.removeChild(shadowHost);
+  }
+  
+  shadowHost = null;
+  shadowRoot = null;
+  tooltip = null;
+  detailPanel = null;
+  hoveredElement = null;
+  isActive = false;
+}
+
+/**
+ * initializes inspection engine
  */
 function init() {
+  if (!isContextValid()) {
+    cleanupOrphaned();
+    return;
+  }
+  
   if (isActive) return;
   
   if (!tooltip) tooltip = createTooltip();
@@ -20,10 +48,14 @@ function init() {
 }
 
 /**
- * Deactivates the inspection engine and cleans up
- * @returns {void}
+ * deactivates inspection engine, cleans up
  */
 function destroy() {
+  if (!isContextValid()) {
+    cleanupOrphaned();
+    return;
+  }
+  
   if (!isActive) return;
   
   document.removeEventListener('mousemove', handleMouseMove, true);
@@ -32,9 +64,8 @@ function destroy() {
   if (tooltip) tooltip.style.display = 'none';
   if (detailPanel) detailPanel.style.display = 'none';
   
-  document.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach(element => {
-    element.classList.remove(HIGHLIGHT_CLASS);
-  });
+  const overlay = shadowRoot?.getElementById('pp-overlay');
+  if (overlay) overlay.style.opacity = '0';
   
   hoveredElement = null;
   isDetailPanelOpen = false;

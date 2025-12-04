@@ -1,12 +1,9 @@
-/**
- * Pinpoint - Event Handlers
- * Handles mouse and click events with rAF optimization
- */
+// pinpoint - event handlers
+// mouse/click with raf throttling
 
 /**
- * Handles mousemove events with rAF throttling
- * @param {MouseEvent} event - Mouse event
- * @returns {void}
+ * handles mousemove with raf throttling
+ * @param {MouseEvent} event
  */
 function handleMouseMove(event) {
   if (!isActive || isDetailPanelOpen) return;
@@ -19,18 +16,15 @@ function handleMouseMove(event) {
   };
 
   if (rafPending) return;
-  
   rafPending = true;
   requestAnimationFrame(processMouseMove);
 }
 
 /**
- * Processes mouse movement at most once per frame
- * @returns {void}
+ * processes mouse movement once per frame
  */
 function processMouseMove() {
   rafPending = false;
-  
   if (!lastMouseEvent) return;
   
   const { target, clientX, clientY, altKey } = lastMouseEvent;
@@ -47,43 +41,33 @@ function processMouseMove() {
 }
 
 /**
- * Checks if element is part of Pinpoint UI
- * @param {HTMLElement} element - Element to check
- * @returns {boolean} True if element is Pinpoint UI
+ * @param {HTMLElement} el
+ * @returns {boolean} true if element is pinpoint ui
  */
-function isPinpointElement(element) {
-  return (element.id && element.id.startsWith('pp-')) || 
-         (element.closest && element.closest('#pp-panel'));
+function isPinpointElement(el) {
+  return (el.id?.startsWith('pp-')) || el.closest?.('#pp-panel');
 }
 
 /**
- * Hides tooltip and overlay highlight
- * @returns {void}
+ * hides tooltip and overlay
  */
 function hideTooltipAndClearHighlight() {
   tooltip.style.display = 'none';
-  
-  const overlay = shadowRoot.getElementById('pp-overlay');
-  if (overlay) {
-    overlay.style.opacity = '0';
-  }
-  
+  const overlay = shadowRoot?.getElementById('pp-overlay');
+  if (overlay) overlay.style.opacity = '0';
   hoveredElement = null;
 }
 
 /**
- * Updates the overlay to highlight target element
- * @param {HTMLElement} target - Element to highlight
- * @returns {void}
+ * updates overlay to highlight element
+ * @param {HTMLElement} target
  */
 function updateHighlight(target) {
   hoveredElement = target;
-  
-  const overlay = shadowRoot.getElementById('pp-overlay');
+  const overlay = shadowRoot?.getElementById('pp-overlay');
   if (!overlay) return;
   
   const rect = target.getBoundingClientRect();
-  
   overlay.style.top = rect.top + 'px';
   overlay.style.left = rect.left + 'px';
   overlay.style.width = rect.width + 'px';
@@ -92,29 +76,26 @@ function updateHighlight(target) {
 }
 
 /**
- * Updates tooltip content and position
- * @param {HTMLElement} target - Target element
- * @param {number} clientX - Mouse X position
- * @param {number} clientY - Mouse Y position
- * @returns {void}
+ * updates tooltip content and position
+ * @param {HTMLElement} target
+ * @param {number} clientX
+ * @param {number} clientY
  */
 function updateTooltip(target, clientX, clientY) {
   const tag = target.tagName.toLowerCase();
-  const classes = target.className && typeof target.className === 'string'
+  const classes = typeof target.className === 'string'
     ? target.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-')).join('.')
     : '';
-  const label = classes ? `${tag}.${classes}` : tag;
   
-  tooltip.textContent = `${label} • Click to capture`;
+  tooltip.textContent = `${classes ? `${tag}.${classes}` : tag} • Click to capture`;
   tooltip.style.display = 'block';
   tooltip.style.left = (clientX + TOOLTIP_OFFSET_X) + 'px';
   tooltip.style.top = (clientY + TOOLTIP_OFFSET_Y) + 'px';
 }
 
 /**
- * Handles click events for element capture
- * @param {MouseEvent} event - Click event
- * @returns {void}
+ * handles alt+click for element capture
+ * @param {MouseEvent} event
  */
 function handleClick(event) {
   if (!isActive || !event.altKey) return;
@@ -123,7 +104,6 @@ function handleClick(event) {
   event.stopPropagation();
 
   const target = event.target;
-  
   if (isPinpointElement(target)) return;
 
   captureElementData(target);
@@ -131,10 +111,8 @@ function handleClick(event) {
 }
 
 /**
- * Captures and populates element data in the panel
- * Shows Shadow DOM piercing selectors when applicable
- * @param {HTMLElement} target - Element to capture
- * @returns {void}
+ * captures element data and populates panel
+ * @param {HTMLElement} target
  */
 function captureElementData(target) {
   const selectorData = getAllSelectorFormats(target);
@@ -157,8 +135,7 @@ function captureElementData(target) {
 }
 
 /**
- * Shows the detail panel and hides tooltip
- * @returns {void}
+ * shows detail panel, hides tooltip
  */
 function showDetailPanel() {
   detailPanel.style.display = 'block';

@@ -1,99 +1,71 @@
-/**
- * Pinpoint - CSS Selector Engine
- * Generates stable, production-grade CSS selectors using priority algorithm:
- * ID > Data Attributes > ARIA > Classes > Structural Path
- * 
- * For Shadow DOM elements, generates piercing selectors for Playwright/Puppeteer
- */
+// pinpoint - selector engine
+// generates stable css selectors: id > data-* > aria > class > structural
 
-/** @type {WeakMap<HTMLElement, string>} Cache for optimal selectors */
 const selectorCache = new WeakMap();
-
-/** @type {WeakMap<HTMLElement, Object>} Cache for full selector formats */
 const formatCache = new WeakMap();
 
 /**
- * Generates the most stable CSS selector for an element
- * Uses WeakMap cache and fast-path for light DOM elements
- * @param {HTMLElement} element - Target element
- * @returns {string} Optimized CSS selector (piercing if in Shadow DOM)
+ * generates optimal selector, cached
+ * @param {HTMLElement} el
+ * @returns {string}
  */
-function getOptimalSelector(element) {
-  const cached = selectorCache.get(element);
+function getOptimalSelector(el) {
+  const cached = selectorCache.get(el);
   if (cached) return cached;
   
-  const root = element.getRootNode();
-  const inShadow = root instanceof ShadowRoot;
+  const inShadow = el.getRootNode() instanceof ShadowRoot;
+  const selector = inShadow ? getPiercingSelector(el).playwright : getLightDOMSelector(el);
   
-  let selector;
-  if (inShadow) {
-    const piercing = getPiercingSelector(element);
-    selector = piercing.playwright;
-  } else {
-    selector = getLightDOMSelector(element);
-  }
-  
-  selectorCache.set(element, selector);
+  selectorCache.set(el, selector);
   return selector;
 }
 
 /**
- * Gets all selector formats for an element (for UI display)
- * Uses WeakMap cache for repeated queries
- * @param {HTMLElement} element - Target element
- * @returns {Object} Selector formats
+ * gets all selector formats for ui display
+ * @param {HTMLElement} el
+ * @returns {Object}
  */
-function getAllSelectorFormats(element) {
-  const cached = formatCache.get(element);
+function getAllSelectorFormats(el) {
+  const cached = formatCache.get(el);
   if (cached) return cached;
   
-  const root = element.getRootNode();
-  const inShadow = root instanceof ShadowRoot;
+  const inShadow = el.getRootNode() instanceof ShadowRoot;
   
   let result;
   if (inShadow) {
-    result = getPiercingSelector(element);
+    result = getPiercingSelector(el);
   } else {
-    const selector = getLightDOMSelector(element);
-    result = {
-      playwright: selector,
-      puppeteer: selector,
-      css: selector,
-      custom: selector,
-      depth: 0
-    };
+    const selector = getLightDOMSelector(el);
+    result = { playwright: selector, puppeteer: selector, css: selector, custom: selector, depth: 0 };
   }
   
-  formatCache.set(element, result);
+  formatCache.set(el, result);
   return result;
 }
 
 /**
- * Generates selector for light DOM element
- * @param {HTMLElement} element - Target element
- * @returns {string} CSS selector
+ * generates light dom selector using priority algorithm
+ * @param {HTMLElement} el
+ * @returns {string}
  */
-function getLightDOMSelector(element) {
-  if (element.id && isUniqueSelector(`#${element.id}`)) {
-    return `#${element.id}`;
-  }
-
-  const dataSelector = getUniqueDataAttributeSelector(element);
+function getLightDOMSelector(el) {
+  if (el.id && isUniqueSelector(`#${el.id}`)) return `#${el.id}`;
+  
+  const dataSelector = getUniqueDataAttributeSelector(el);
   if (dataSelector) return dataSelector;
 
-  const ariaSelector = getUniqueAriaSelector(element);
+  const ariaSelector = getUniqueAriaSelector(el);
   if (ariaSelector) return ariaSelector;
 
-  const classSelector = getUniqueClassSelector(element);
+  const classSelector = getUniqueClassSelector(el);
   if (classSelector) return classSelector;
 
-  return buildStructuralPath(element);
+  return buildStructuralPath(el);
 }
 
 /**
- * Checks if a selector uniquely identifies a single element
- * @param {string} selector - CSS selector to test
- * @returns {boolean} True if selector matches exactly one element
+ * @param {string} selector
+ * @returns {boolean} true if matches exactly one element
  */
 function isUniqueSelector(selector) {
   try {
@@ -104,106 +76,79 @@ function isUniqueSelector(selector) {
 }
 
 /**
- * Attempts to generate a unique selector from data-* attributes
- * @param {HTMLElement} element - Target element
- * @returns {string|null} Unique selector or null
+ * tries data-* attributes for unique selector
+ * @param {HTMLElement} el
+ * @returns {string|null}
  */
-function getUniqueDataAttributeSelector(element) {
-  const dataAttributes = Array.from(element.attributes)
-    .filter(attr => attr.name.startsWith('data-'));
-  
-  for (const attr of dataAttributes) {
+function getUniqueDataAttributeSelector(el) {
+  for (const attr of el.attributes) {
+    if (!attr.name.startsWith('data-')) continue;
     const selector = `[${attr.name}="${CSS.escape(attr.value)}"]`;
-    if (isUniqueSelector(selector)) {
-      return selector;
-    }
+    if (isUniqueSelector(selector)) return selector;
   }
-  
   return null;
 }
 
 /**
- * Attempts to generate a unique selector from ARIA attributes
- * @param {HTMLElement} element - Target element
- * @returns {string|null} Unique selector or null
+ * tries aria attributes for unique selector
+ * @param {HTMLElement} el
+ * @returns {string|null}
  */
-function getUniqueAriaSelector(element) {
+function getUniqueAriaSelector(el) {
   for (const attrName of ARIA_ATTRIBUTES) {
-    const attrValue = element.getAttribute(attrName);
-    if (!attrValue) continue;
+    const value = el.getAttribute(attrName);
+    if (!value) continue;
 
-    const selector = `[${attrName}="${CSS.escape(attrValue)}"]`;
-    if (isUniqueSelector(selector)) {
-      return selector;
-    }
+    const selector = `[${attrName}="${CSS.escape(value)}"]`;
+    if (isUniqueSelector(selector)) return selector;
 
-    const tagSelector = `${element.tagName.toLowerCase()}${selector}`;
-    if (isUniqueSelector(tagSelector)) {
-      return tagSelector;
-    }
+    const tagSelector = `${el.tagName.toLowerCase()}${selector}`;
+    if (isUniqueSelector(tagSelector)) return tagSelector;
   }
-  
   return null;
 }
 
 /**
- * Attempts to generate a unique selector from CSS classes
- * @param {HTMLElement} element - Target element
- * @returns {string|null} Unique selector or null
+ * tries class names for unique selector
+ * @param {HTMLElement} el
+ * @returns {string|null}
  */
-function getUniqueClassSelector(element) {
-  if (!element.className || typeof element.className !== 'string') {
-    return null;
-  }
-
-  const classes = element.className
-    .trim()
-    .split(/\s+/)
-    .filter(cls => cls && !cls.startsWith('pp-'));
+function getUniqueClassSelector(el) {
+  if (typeof el.className !== 'string') return null;
   
-  if (classes.length === 0) return null;
+  const classes = el.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-'));
+  if (!classes.length) return null;
 
   const classSelector = '.' + classes.join('.');
-  if (isUniqueSelector(classSelector)) {
-    return classSelector;
-  }
+  if (isUniqueSelector(classSelector)) return classSelector;
 
-  const tagClassSelector = element.tagName.toLowerCase() + classSelector;
-  if (isUniqueSelector(tagClassSelector)) {
-    return tagClassSelector;
-  }
+  const tagClassSelector = el.tagName.toLowerCase() + classSelector;
+  if (isUniqueSelector(tagClassSelector)) return tagClassSelector;
   
   return null;
 }
 
 /**
- * Builds a structural CSS path from element to body
- * @param {HTMLElement} element - Target element
- * @returns {string} Structural selector path
+ * builds structural path as fallback
+ * @param {HTMLElement} el
+ * @returns {string}
  */
-function buildStructuralPath(element) {
+function buildStructuralPath(el) {
   const path = [];
-  let current = element;
+  let current = el;
   let depth = 0;
   
   while (current && current !== document.body && depth < MAX_STRUCTURAL_PATH_DEPTH) {
     let selector = current.tagName.toLowerCase();
     
     if (current.id) {
-      selector += `#${current.id}`;
-      path.unshift(selector);
+      path.unshift(selector + `#${current.id}`);
       break;
     }
     
-    if (current.className && typeof current.className === 'string') {
-      const classes = current.className
-        .trim()
-        .split(/\s+/)
-        .filter(cls => cls && !cls.startsWith('pp-'));
-      
-      if (classes.length > 0) {
-        selector += '.' + classes[0];
-      }
+    if (typeof current.className === 'string') {
+      const cls = current.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-'))[0];
+      if (cls) selector += '.' + cls;
     }
     
     path.unshift(selector);
@@ -215,42 +160,35 @@ function buildStructuralPath(element) {
 }
 
 /**
- * Extracts Angular-specific attributes from an element
- * @param {HTMLElement} element - Target element
- * @returns {string} Space-separated Angular attributes or 'none'
+ * extracts ng-* attributes from element
+ * @param {HTMLElement} el
+ * @returns {string}
  */
-function getAngularAttributes(element) {
-  const angularAttrs = Array.from(element.attributes)
-    .filter(attr => attr.name.includes('ng'))
-    .map(attr => `${attr.name}="${attr.value}"`)
+function getAngularAttributes(el) {
+  const attrs = Array.from(el.attributes)
+    .filter(a => a.name.includes('ng'))
+    .map(a => `${a.name}="${a.value}"`)
     .join(' ');
-  
-  return angularAttrs || 'none';
+  return attrs || 'none';
 }
 
 /**
- * Builds a human-readable DOM path for display
- * @param {HTMLElement} element - Target element
- * @returns {string} Readable path with → separators
+ * builds human-readable dom path
+ * @param {HTMLElement} el
+ * @returns {string}
  */
-function getDomPath(element) {
+function getDomPath(el) {
   const path = [];
-  let current = element;
+  let current = el;
   
   while (current && current !== document.body) {
     let part = current.tagName.toLowerCase();
     
     if (current.id) {
       part += `#${current.id}`;
-    } else if (current.className && typeof current.className === 'string') {
-      const classes = current.className
-        .trim()
-        .split(/\s+/)
-        .filter(cls => cls && !cls.startsWith('pp-'));
-      
-      if (classes[0]) {
-        part += `.${classes[0]}`;
-      }
+    } else if (typeof current.className === 'string') {
+      const cls = current.className.trim().split(/\s+/).filter(c => c && !c.startsWith('pp-'))[0];
+      if (cls) part += `.${cls}`;
     }
     
     path.unshift(part);
