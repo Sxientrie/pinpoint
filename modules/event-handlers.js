@@ -6,6 +6,7 @@
  * @param {MouseEvent} event
  */
 function handleMouseMove(event) {
+  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
   if (!isActive || isDetailPanelOpen) return;
 
   lastMouseEvent = {
@@ -25,6 +26,7 @@ function handleMouseMove(event) {
  */
 function processMouseMove() {
   rafPending = false;
+  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
   if (!lastMouseEvent) return;
   
   const { target, clientX, clientY, altKey } = lastMouseEvent;
@@ -98,6 +100,7 @@ function updateTooltip(target, clientX, clientY) {
  * @param {MouseEvent} event
  */
 function handleClick(event) {
+  if (!chrome.runtime?.id) { cleanupOrphaned(); return; }
   if (!isActive || !event.altKey) return;
 
   event.preventDefault();
