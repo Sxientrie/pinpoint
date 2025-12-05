@@ -13,6 +13,9 @@ interface PinpointGlobal {
         getOptimalSelector?: (el: Element) => string;
         getAllSelectorFormats?: (el: Element) => any;
         getLightDOMSelector?: (el: Element) => string;
+        getDomPath?: (el: Element) => Array<{ label: string; depth: number }>;
+        getAngularAttributes?: (el: Element) => string;
+        getReactComponentName?: (el: Element) => string | null;
     };
 }
 
@@ -151,5 +154,141 @@ describe('Selector Engine', () => {
 
         expect(window.Pinpoint.ShadowPierce.getPiercingSelector).toHaveBeenCalledWith(target);
         expect(selector).toBe('piercing >> selector');
+    });
+
+    describe('getDomPath', () => {
+        it('should return empty array for body element', () => {
+            const path = window.Pinpoint.Selector.getDomPath!(document.body);
+            expect(path).toEqual([]);
+        });
+
+        it('should build path from element to body', () => {
+            document.body.innerHTML = `
+                <div id="container">
+                    <span class="inner">Target</span>
+                </div>
+            `;
+            const target = document.querySelector('span')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            expect(path.length).toBe(2);
+            // path is ordered from root to target
+            expect(path[0].label).toBe('div#container');
+            expect(path[1].label).toBe('span.inner');
+        });
+
+        it('should include depth for each segment', () => {
+            document.body.innerHTML = `
+                <div id="level1">
+                    <div id="level2">
+                        <span id="level3">Target</span>
+                    </div>
+                </div>
+            `;
+            const target = document.querySelector('#level3')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            // depth increases as we go up the tree
+            expect(path[0].depth).toBe(2); // level1
+            expect(path[1].depth).toBe(1); // level2
+            expect(path[2].depth).toBe(0); // level3 (target)
+        });
+
+        it('should prioritize ID over class in label', () => {
+            document.body.innerHTML = `
+                <div id="has-id" class="has-class">Target</div>
+            `;
+            const target = document.querySelector('div')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            expect(path[0].label).toBe('div#has-id');
+        });
+
+        it('should use first class when no ID', () => {
+            document.body.innerHTML = `
+                <div class="first-class second-class">Target</div>
+            `;
+            const target = document.querySelector('div')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            expect(path[0].label).toBe('div.first-class');
+        });
+
+        it('should use tag only when no ID or class', () => {
+            document.body.innerHTML = `
+                <div><span>Target</span></div>
+            `;
+            const target = document.querySelector('span')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            expect(path[1].label).toBe('span');
+        });
+
+        it('should ignore pp- prefixed classes', () => {
+            document.body.innerHTML = `
+                <div class="pp-internal real-class">Target</div>
+            `;
+            const target = document.querySelector('div')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            expect(path[0].label).toBe('div.real-class');
+        });
+
+        it('should handle deeply nested elements', () => {
+            document.body.innerHTML = `
+                <div id="a">
+                    <div id="b">
+                        <div id="c">
+                            <div id="d">
+                                <span id="target">Deep</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const target = document.querySelector('#target')!;
+            const path = window.Pinpoint.Selector.getDomPath!(target);
+            
+            expect(path.length).toBe(5);
+            expect(path[0].label).toBe('div#a');
+            expect(path[4].label).toBe('span#target');
+        });
+    });
+
+    describe('getAngularAttributes', () => {
+        it('should return "none" when no ng attributes', () => {
+            document.body.innerHTML = '<div id="test">No Angular</div>';
+            const el = document.getElementById('test')!;
+            
+            const attrs = window.Pinpoint.Selector.getAngularAttributes!(el);
+            expect(attrs).toBe('none');
+        });
+
+        it('should extract ng-* attributes', () => {
+            document.body.innerHTML = '<div ng-if="show" ng-class="cls">Angular</div>';
+            const el = document.querySelector('div')!;
+            
+            const attrs = window.Pinpoint.Selector.getAngularAttributes!(el);
+            expect(attrs).toContain('ng-if="show"');
+            expect(attrs).toContain('ng-class="cls"');
+        });
+
+        it('should extract _ngcontent attributes', () => {
+            document.body.innerHTML = '<div _ngcontent-abc="">Angular</div>';
+            const el = document.querySelector('div')!;
+            
+            const attrs = window.Pinpoint.Selector.getAngularAttributes!(el);
+            expect(attrs).toContain('_ngcontent-abc');
+        });
+    });
+
+    describe('getReactComponentName', () => {
+        it('should return null for non-React elements', () => {
+            document.body.innerHTML = '<div id="plain">Not React</div>';
+            const el = document.getElementById('plain')!;
+            
+            const name = window.Pinpoint.Selector.getReactComponentName!(el);
+            expect(name).toBeNull();
+        });
     });
 });
