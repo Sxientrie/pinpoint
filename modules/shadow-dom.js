@@ -72,42 +72,51 @@
   text-overflow: ellipsis;
 }
 
+#pp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.8);
+  z-index: 2147483645;
+  display: none;
+}
+
 #pp-panel {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 560px;
+  width: 480px;
   max-width: 90vw;
   max-height: 85vh;
   overflow-y: auto;
-  background: rgba(9, 9, 11, 0.97);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(63, 63, 70, 0.4);
-  border-radius: 12px;
+  overflow-x: hidden;
+  background: rgba(9, 9, 11, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(39, 39, 42, 0.5);
+  border-radius: 8px;
   z-index: 2147483646;
   display: none;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #e4e4e7;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   pointer-events: auto;
   will-change: transform;
+  padding: 0;
 }
 
 .pp-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid rgba(63, 63, 70, 0.3);
-  background: rgba(24, 24, 27, 0.5);
+  padding: 10px 12px;
+  background: rgba(24, 24, 27, 0.6);
+  border-bottom: 1px solid rgba(39, 39, 42, 0.4);
   cursor: move;
   user-select: none;
 }
 
 .pp-panel-header h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: lowercase;
   letter-spacing: 0.05em;
@@ -118,16 +127,16 @@
   background: none;
   border: none;
   color: #52525b;
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
-  padding: 4px;
-  width: 28px;
-  height: 28px;
+  padding: 2px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 4px;
   transition: all 0.15s;
 }
 
@@ -137,23 +146,24 @@
 }
 
 .pp-panel-body {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  gap: 1px;
+  background: rgba(39, 39, 42, 0.3);
 }
 
 .pp-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(9, 9, 11, 0.9);
 }
 
 .pp-section label {
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #71717a;
+  color: #52525b;
   font-weight: 600;
 }
 
@@ -163,16 +173,37 @@
 
 .pp-section code {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 12px;
-  padding: 10px 42px 10px 12px;
-  background: rgba(24, 24, 27, 0.8);
-  border: 1px solid rgba(63, 63, 70, 0.3);
-  border-radius: 6px;
-  color: #fafafa;
-  word-break: break-all;
-  line-height: 1.6;
+  font-size: 11px;
+  padding: 6px 28px 6px 8px;
+  background: rgba(24, 24, 27, 0.6);
+  border: 1px solid rgba(39, 39, 42, 0.3);
+  border-radius: 4px;
+  color: #e4e4e7;
+  line-height: 1.5;
   display: block;
   white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 80px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.pp-section code::-webkit-scrollbar {
+  width: 8px;
+}
+
+.pp-section code::-webkit-scrollbar-track {
+  background: rgba(39, 39, 42, 0.4);
+  border-radius: 4px;
+}
+
+.pp-section code::-webkit-scrollbar-thumb {
+  background: #71717a;
+  border-radius: 4px;
+}
+
+.pp-section code::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
 }
 
 .tok-id { color: var(--tok-id, #facc15); }

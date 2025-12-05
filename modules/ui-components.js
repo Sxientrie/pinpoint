@@ -186,6 +186,11 @@
   UI.createDetailPanel = function() {
     if (!S.shadowRoot) SD.createShadowRoot();
     
+    // create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.id = 'pp-backdrop';
+    S.shadowRoot.appendChild(backdrop);
+    
     const panel = document.createElement('div');
     panel.id = 'pp-panel';
     
@@ -215,7 +220,7 @@
     panel.appendChild(body);
     
     S.shadowRoot.appendChild(panel);
-    attachDetailPanelEventListeners(panel);
+    attachDetailPanelEventListeners(panel, backdrop);
     return panel;
   };
   
@@ -246,10 +251,11 @@
     return section;
   }
   
-  function attachDetailPanelEventListeners(panel) {
+  function attachDetailPanelEventListeners(panel, backdrop) {
     const header = panel.querySelector('.pp-panel-header');
     
     panel.querySelector('#pp-close').addEventListener('click', UI.closePanel);
+    backdrop.addEventListener('click', UI.closePanel);
     
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && S.isDetailPanelOpen) UI.closePanel();
@@ -266,10 +272,48 @@
     const targetId = btn.getAttribute('data-copy-target');
     const text = panel.querySelector(`#${targetId}`).textContent;
     
+    const success = await copyToClipboard(text);
+    if (success) showCopySuccess(btn);
+  }
+  
+  /**
+   * copies text to clipboard with fallback
+   * @param {string} text
+   * @returns {Promise<boolean>}
+   */
+  async function copyToClipboard(text) {
+    // try modern clipboard api first
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // fall through to legacy method
+      }
+    }
+    
+    // fallback: hidden textarea + execCommand
     try {
-      await navigator.clipboard.writeText(text);
-      showCopySuccess(btn);
-    } catch {}
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      
+      // prevent layout shift and scrolling
+      textarea.style.cssText = 
+        'position:fixed;top:0;left:0;width:1px;height:1px;' +
+        'padding:0;border:none;outline:none;box-shadow:none;' +
+        'background:transparent;opacity:0;pointer-events:none;';
+      
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, text.length); // ios support
+      
+      const result = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      return result;
+    } catch {
+      return false;
+    }
   }
   
   function showCopySuccess(btn) {
@@ -286,6 +330,10 @@
     if (!S.detailPanel) return;
     S.detailPanel.style.display = 'none';
     S.isDetailPanelOpen = false;
+    
+    // hide backdrop
+    const backdrop = S.shadowRoot?.getElementById('pp-backdrop');
+    if (backdrop) backdrop.style.display = 'none';
     
     // disconnect observer when closing
     P.Events.disconnectObserver();

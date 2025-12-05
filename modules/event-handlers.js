@@ -234,6 +234,10 @@
   };
   
   E.showDetailPanel = function() {
+    // show backdrop
+    const backdrop = S.shadowRoot?.getElementById('pp-backdrop');
+    if (backdrop) backdrop.style.display = 'block';
+    
     S.detailPanel.style.display = 'block';
     S.isDetailPanelOpen = true;
     S.tooltip.style.display = 'none';

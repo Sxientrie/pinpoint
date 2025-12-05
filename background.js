@@ -45,12 +45,33 @@ chrome.runtime.onConnect.addListener(port => {
 });
 
 /**
- * checks if content script is alive via port
+ * checks if content script is alive
+ * port may not exist yet if sw just woke up, falls back to injectedTabs
  * @param {number} tabId
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function isScriptAlive(tabId) {
-  return connectedPorts.has(tabId);
+async function isScriptAlive(tabId) {
+  // if we have an active port, script is definitely alive
+  if (connectedPorts.has(tabId)) {
+    return true;
+  }
+  
+  // sw may have just woken up - check if tab was previously injected
+  await ensureStateInitialized();
+  if (!injectedTabs.has(tabId)) {
+    return false;
+  }
+  
+  // tab was injected before, verify content script is responsive
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: false },
+      func: () => !!window.__PINPOINT_LOADED__
+    });
+    return result?.result === true;
+  } catch {
+    return false;
+  }
 }
 
 // state management
@@ -294,7 +315,7 @@ chrome.action.onClicked.addListener(async tab => {
   try {
     await ensureStateInitialized();
     
-    if (!isScriptAlive(tabId)) {
+    if (!(await isScriptAlive(tabId))) {
       await injectScript(tabId);
       await setTabState(tabId, false);
       await activateInspectionMode(tabId);
