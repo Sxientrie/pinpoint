@@ -261,7 +261,7 @@
   function getAnchoredSelector(el) {
     const tag = el.tagName.toLowerCase();
     let current = el.parentElement;
-    let stepsFromAnchor = [tag];
+    const stepsFromAnchor = [tag];
     let depth = 0;
     
     while (current && current !== document.body && depth < 5) {
