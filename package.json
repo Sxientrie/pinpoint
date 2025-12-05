@@ -4,19 +4,29 @@
   "description": "universal dom inspection tool for capturing stable css selectors on any web page",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && xcopy manifest.json dist\\ /Y && xcopy assets dist\\assets\\ /E /I /Y && xcopy modules dist\\modules\\ /E /I /Y && xcopy background.js dist\\ /Y && xcopy content.js dist\\ /Y && xcopy styles.css dist\\ /Y",
     "watch": "tsc --watch",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test": "npm run build && npm run test:unit && npm run test:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/chrome": "^0.0.268",
-    "typescript": "^5.4.0"
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^24.10.1",
+    "jsdom": "^27.2.0",
+    "playwright": "^1.57.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.15"
   },
   "keywords": [
     "chrome-extension",
     "dom-inspection",
-    "css-selectors",
+    "XXXXXXcss-selectors",
     "web-development",
     "developer-tools"
   ],
