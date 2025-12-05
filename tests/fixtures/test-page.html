@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinpoint Test Fixture</title>
+</head>
+<body>
+    <h1>Pinpoint Test Fixture</h1>
+    <div id="host"></div>
+    <script>
+        // Create a Shadow DOM element to test deep traversal
+        const host = document.getElementById('host');
+        const shadow = host.attachShadow({mode: 'open'});
+
+        const container = document.createElement('div');
+        container.id = 'container';
+        container.style.padding = '20px';
+        container.style.border = '1px solid #ccc';
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Shadow Button';
+        btn.id = 'shadow-btn';
+
+        container.appendChild(btn);
+        shadow.appendChild(container);
+
+        // Add a nested shadow root for extra complexity
+        const innerHost = document.createElement('div');
+        innerHost.id = 'inner-host';
+        container.appendChild(innerHost);
+        const innerShadow = innerHost.attachShadow({mode: 'open'});
+        const innerSpan = document.createElement('span');
+        innerSpan.textContent = 'Deep Shadow Text';
+        innerSpan.className = 'target-text';
+        innerShadow.appendChild(innerSpan);
+    </script>
+</body>
+</html>

@@ -23,3 +23,6 @@ npm-debug.log*
 # build artifacts
 *.js.map
 *.d.ts.map
+playwright-report/
+playwright-report/
+test-results/
